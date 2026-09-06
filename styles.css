@@ -91,6 +91,20 @@ header .updated .live {
 }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
+/* ---------- 页面导航 ---------- */
+.navbar {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 4px;
+}
+.navbar a {
+  color: var(--muted); text-decoration: none; font-size: 12px;
+  font-family: var(--mono); letter-spacing: .5px;
+  padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px;
+  transition: border-color .2s, color .2s;
+}
+.navbar a:hover { color: var(--accent); border-color: var(--border-lit); }
+.navbar a.active { color: var(--accent); border-color: rgba(62,198,224,.4); }
+
 /* ---------- 分区标题 ---------- */
 .region-title {
   display: flex; align-items: center; gap: 10px;

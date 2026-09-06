@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOL 观点 · 宏观数据看板</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ===== KOL 观点页专属样式（复用 styles.css 主题变量） ===== */
+.navbar {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 6px;
+}
+.navbar a {
+  color: var(--muted); text-decoration: none; font-size: 12px;
+  font-family: var(--mono); letter-spacing: .5px;
+  padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px;
+  transition: border-color .2s, color .2s;
+}
+.navbar a:hover { color: var(--accent); border-color: var(--border-lit); }
+.navbar a.active { color: var(--accent); border-color: rgba(62,198,224,.4); }
+
+.insights-wrap { max-width: 820px; margin: 0 auto; }
+
+.article {
+  background: linear-gradient(180deg, var(--card) 0%, var(--card2) 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 26px 28px 22px;
+  margin-bottom: 18px;
+  position: relative;
+}
+.article::before {
+  content: ""; position: absolute; top: 0; left: 28px;
+  width: 28px; height: 2px; background: var(--accent);
+  opacity: .55; border-radius: 0 0 2px 2px;
+}
+.article.latest { border-color: rgba(62,198,224,.35); }
+.article .a-date {
+  color: var(--faint); font-size: 11px; font-family: var(--mono);
+  letter-spacing: 1px; margin-bottom: 10px;
+}
+.article .a-title-zh {
+  font-size: 22px; font-weight: 700; line-height: 1.4; letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+.article .a-title-en {
+  color: var(--muted); font-size: 13px; line-height: 1.5;
+  font-family: var(--mono); margin-bottom: 14px;
+}
+.article .a-author {
+  color: var(--faint); font-size: 12px; margin-bottom: 18px;
+  padding-bottom: 16px; border-bottom: 1px dashed var(--border);
+}
+.article .a-author b { color: var(--text); font-weight: 600; }
+.article .a-body p {
+  color: var(--text); font-size: 15px; line-height: 1.95;
+  margin-bottom: 16px; letter-spacing: .3px;
+}
+.article .a-en {
+  margin-top: 18px; padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.article .a-en summary {
+  cursor: pointer; color: var(--faint); font-size: 12px;
+  font-family: var(--mono); letter-spacing: 1px;
+  user-select: none; list-style: none;
+}
+.article .a-en summary::before { content: "▸ "; color: var(--accent); }
+.article .a-en[open] summary::before { content: "▾ "; }
+.article .a-en p {
+  color: var(--muted); font-size: 13px; line-height: 1.9;
+  margin: 14px 0 0; font-family: var(--mono);
+}
+.article .a-src {
+  display: inline-block; margin-top: 16px;
+  color: var(--accent); font-size: 12px; text-decoration: none;
+  font-family: var(--mono);
+}
+.article .a-src:hover { text-decoration: underline; }
+
+.archive-title {
+  display: flex; align-items: center; gap: 10px;
+  margin: 28px 0 12px;
+}
+.archive-title .bar { width: 3px; height: 16px; background: var(--accent); border-radius: 1px; }
+.archive-title h2 { font-size: 15px; font-weight: 600; letter-spacing: 1.5px; }
+.archive-title .en { color: var(--faint); font-size: 10px; letter-spacing: 3px; font-family: var(--mono); }
+
+.arch-item {
+  background: var(--card2);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 18px; margin-bottom: 10px;
+}
+.arch-item summary {
+  cursor: pointer; user-select: none; list-style: none;
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.arch-item summary .d { color: var(--faint); font-size: 11px; font-family: var(--mono); flex: 0 0 auto; }
+.arch-item summary .t { color: var(--text); font-size: 14px; font-weight: 600; flex: 1 1 auto; }
+.arch-item summary::after { content: "▸"; color: var(--accent); font-size: 12px; }
+.arch-item[open] summary::after { content: "▾"; }
+.arch-item .arch-body { padding-top: 12px; }
+.arch-item .arch-body p { color: var(--muted); font-size: 13px; line-height: 1.9; margin-bottom: 12px; }
+
+.disclaimer {
+  color: var(--faint); font-size: 11px; line-height: 1.8;
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .article { padding: 20px 16px 16px; }
+  .article .a-title-zh { font-size: 19px; }
+  .article .a-body p { font-size: 14px; line-height: 1.85; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="kicker">MACRO MONITOR · INSIGHTS</div>
+    <h1>KOL 观点</h1>
+    <div class="sub">市场顶尖学者的每周观点 · 中文翻译</div>
+  </div>
+  <div class="updated">更新于<br><b id="updatedAt">—</b></div>
+</header>
+
+<div class="navbar">
+  <a href="index.html">← 数据看板</a>
+  <a href="insights.html" class="active">KOL 观点</a>
+</div>
+
+<div class="insights-wrap">
+  <div id="articles"></div>
+</div>
+
+<footer>
+  <div class="disclaimer" id="disclaimer"></div>
+  <div class="sign">南山怪客</div>
+</footer>
+
+<script>
+const DATA = {"updated_at": "2026-09-06 12:00", "source_name": "Professor Siegel Weekly Commentary", "source_zh": "杰里米·西格尔教授周评", "source_url": "https://resources.wisdomtree.com/weekly-siegel-commentary/", "articles": [{"id": "2026-08-10", "date": "2026-08-10", "title_en": "Soft Payrolls, Strong Earnings Reinforce Bullish Outlook", "title_zh": "非农疲软叠加盈利强劲，强化看多前景", "author": "Jeremy Siegel", "author_title": "WisdomTree 高级经济学家 · 宾夕法尼亚大学沃顿商学院金融学荣休教授", "url": "https://resources.wisdomtree.com/weekly-siegel-commentary/", "body_zh": ["市场被一份远弱于预期的就业报告所震动，国债收益率大幅下挫，投资者迅速下调了对美联储再次加息的押注。乍看之下，非农数据令人不安，尤其是叠加此前几个月的大幅下修，以及出人意料的疲弱薪资增长。", "但我认为，这个头条数据夸大了劳动力市场的疲弱。大部分下滑似乎源于临时性因素——包括世界杯后休闲娱乐业就业走弱、州和地方政府招聘的季节性扰动，以及劳动力人口结构的持续变化——而非经济基本面的突然恶化。最重要的是，失业率实际上降至 4.1%，表明劳动力需求与当前放缓的劳动力增长大体相符。", "劳动力市场已经进入一个新的均衡。随着人口增长放缓、移民收紧以及劳动力老龄化，每月约 2 万至 4 万的非农新增已经足以维持失业率稳定。十二个月平均就业增量已落在这一区间附近，表明经济正以接近其可持续趋势的速度增长，而非滑向衰退。如果 GDP 增长能够维持，偏弱的就业数据最终可能反而成为利好。以更少的工时生产同样的产出，将直接转化为更强的生产率增长——这正是投资者一直期待看到的、随着人工智能更深入地融入整体经济而出现的发展。尽管近期的生产率报告令人失望，但就业数据的大幅下修，提高了数据开始显现期待已久的人工智能驱动的生产率加速的可能性。", "就货币政策而言，这份就业报告大幅降低了加息的可能性。未来一周的通胀数据依然关键，但油价仍是核心变量。受地缘紧张局势再度升温影响，汽油价格已从近期低点回升，不过期货市场目前暗示，若中东局势不再进一步升级，未来数月油价将温和回落。货币供应趋势同样值得密切关注。自近期冲突爆发以来，M2 以约 8% 的年化速度扩张，但这一增速似乎正在回落到 5% 至 6% 的区间。这仍高于战前水平，但远未达到疫情期间那种爆炸性的货币扩张。除非油价再次大幅飙升，否则我认为美联储很难在 9 月会议上为加息找到理由。", "美国企业继续交出极为强劲的盈利，利润率达到了除强劲衰退后复苏期外罕见的水平。我认为这种强劲在很大程度上是结构性的，而非周期性的。如今的科技龙头将巨额的研究、软件和知识产权投资计为费用，而非像传统实物资产那样资本化。这种会计处理使得报表上的利润率显得异常之高，即便企业实际上正从那些从未出现在资产负债表上的巨额投资中获得回报。在科技行业之外，利润率保持相对稳定，这表明超常的盈利能力集中在那些从人工智能和无形资本中获益最多的企业，而非反映过度杠杆或不可持续的定价权。", "未来的关键问题是，人工智能是否终于开始在生产率统计数据中体现出来。如果企业能以更少的工人生产更多产品，同时维持异常强劲的盈利增长，那么经济可能正在进入一个更为有利的长期生产率周期。这将支持盈利的持续扩张、缓解通胀压力，并最终使货币政策得以变得不那么紧缩。这份就业报告或许让投资者感到意外，但抛开头条数字，更大的叙事依然是：一个持续适应、创新并展现出非凡韧性的经济体。"], "body_en": ["The market was jolted by a much weaker-than-expected employment report, sending Treasury yields sharply lower as investors quickly reduced the odds of another Federal Reserve rate hike. At first glance, the payroll number looked alarming, particularly when combined with sizable downward revisions to prior months and unexpectedly soft wage growth.", "But I believe the headline overstated the weakness in the labor market. Much of the decline appears attributable to temporary factors—including weakness in leisure employment following the World Cup, seasonal distortions in state and local government hiring, and ongoing shifts in labor force demographics—rather than a sudden deterioration in underlying economic conditions. Most importantly, the unemployment rate actually fell to 4.1%, indicating that labor demand remains broadly consistent with today's slower labor force growth.", "The labor market has entered a new equilibrium. With slower population growth, tighter immigration, and an aging workforce, monthly payroll gains of roughly 20,000 to 40,000 are increasingly sufficient to keep unemployment stable. The twelve-month average job gain has settled near that range, suggesting the economy is growing close to its sustainable trend rather than slipping into recession. The weaker employment data could ultimately prove constructive if GDP growth holds up. Fewer hours worked producing the same level of output would translate directly into stronger productivity growth—precisely the development investors have been waiting to see as artificial intelligence becomes more deeply embedded throughout the economy. While recent productivity reports have disappointed, the labor revisions raise the possibility data will start showing the long-awaited AI-driven acceleration.", "For monetary policy, the employment report materially lowers the chance of a rate increase. Inflation data over the next week will remain critical, but oil prices continue to be the key variable. Gasoline prices have risen from their recent lows following renewed geopolitical tensions, yet futures markets currently imply modest declines over the coming months if Middle East tensions do not escalate further. Money supply trends also deserve close attention here. Since the onset of the recent conflict, M2 has expanded at roughly an 8% annualized pace, but that growth now appears to be moderating back toward the 5% to 6% range. That remains above pre-war levels but is far removed from the explosive monetary expansion experienced during the pandemic. Unless oil prices experience another significant spike, I believe it will be difficult for the Fed to justify raising rates at its September meeting.", "Corporate America continues to deliver remarkably strong earnings, with profit margins reaching levels rarely seen outside of powerful post-recession recoveries. I believe much of this strength is structural rather than cyclical. Today's technology leaders expense enormous investments in research, software, and intellectual property rather than capitalizing them as traditional physical assets. That accounting treatment makes reported profit margins appear extraordinarily high even though companies are earning returns on massive investments that never appear on the balance sheet. Outside tech, profit margins remain relatively stable, suggesting the extraordinary profitability is concentrated among firms benefiting most from AI and intangible capital rather than reflecting excessive leverage or unsustainable pricing power.", "The key question going forward is whether AI finally begins to show up in the productivity statistics. If businesses produce more with fewer workers while maintaining exceptionally strong earnings growth, the economy may be entering a more favorable long-term productivity cycle. That would support continued earnings expansion, ease inflation pressures, and ultimately allow monetary policy to become less restrictive. The labor report may have surprised investors, but beneath the headline, the broader story remains one of an economy that continues to adapt, innovate, and demonstrate remarkable resilience."]}]};
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function render(){
+  document.getElementById('updatedAt').textContent = DATA.updated_at || '—';
+  document.getElementById('disclaimer').innerHTML =
+    DATA.source_zh + '来自 ' + esc(DATA.source_name) + '，原文见 ' +
+    '<a href="'+esc(DATA.source_url)+'" target="_blank" rel="noopener" style="color:var(--accent)">官方页面</a>。' +
+    '本文为个人翻译，仅供学习参考，不构成任何投资建议。作者观点可能随时变化，请以官方原文为准。';
+
+  const arts = DATA.articles.slice().sort((a,b) => b.date.localeCompare(a.date));
+  if (!arts.length) { document.getElementById('articles').innerHTML = ''; return; }
+
+  let html = '';
+  arts.forEach((a, i) => {
+    const isLatest = (i === 0);
+    if (isLatest) {
+      // 最新一篇：完整显示
+      html += '<div class="article latest">' +
+        '<div class="a-date">'+esc(a.date)+'</div>' +
+        '<div class="a-title-zh">'+esc(a.title_zh)+'</div>' +
+        '<div class="a-title-en">'+esc(a.title_en)+'</div>' +
+        '<div class="a-author"><b>'+esc(a.author)+'</b> · '+esc(a.author_title)+'</div>' +
+        '<div class="a-body">' + a.body_zh.map(p => '<p>'+esc(p)+'</p>').join('') + '</div>' +
+        '<details class="a-en"><summary>英文原文</summary>' +
+          a.body_en.map(p => '<p>'+esc(p)+'</p>').join('') + '</details>' +
+        '<a class="a-src" href="'+esc(a.url)+'" target="_blank" rel="noopener">阅读英文原文 ↗</a>' +
+      '</div>';
+    } else {
+      // 历史文章：折叠
+      html += '<details class="arch-item">' +
+        '<summary><span class="d">'+esc(a.date)+'</span><span class="t">'+esc(a.title_zh)+'</span></summary>' +
+        '<div class="arch-body"><div class="a-title-en" style="margin-bottom:8px">'+esc(a.title_en)+'</div>' +
+          a.body_zh.map(p => '<p>'+esc(p)+'</p>').join('') + '</div>' +
+      '</details>';
+    }
+  });
+
+  // 历史归档标题（若有历史文章）
+  if (arts.length > 1) {
+    html += '<div class="archive-title"><div class="bar"></div><h2>历史观点</h2><span class="en">ARCHIVE</span></div>';
+  }
+  document.getElementById('articles').innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
