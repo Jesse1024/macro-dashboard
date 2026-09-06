@@ -299,10 +299,12 @@ render();
   var canvas = document.getElementById('bg-rain');
   if (!canvas) return;
   var ctx = canvas.getContext('2d');
-  var fs = 18, gap = 2, cols = 0, drops = [];
+  var fs = 18, gap = 2, cols = 0, drops = [], speed = 0.35;
   var chars = '0123456789ABCDEF';
   function resize() {
-    fs = window.matchMedia('(max-width: 768px)').matches ? 24 : 18;
+    var isMobile = window.matchMedia('(max-width: 768px)').matches;
+    fs = isMobile ? 24 : 18;
+    speed = isMobile ? 0.15 : 0.35;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     cols = Math.floor(canvas.width / (fs * gap));
@@ -320,7 +322,7 @@ render();
       if (y > canvas.height && Math.random() > 0.98) drops[i] = 0;
       ctx.fillStyle = 'rgba(62, 198, 224, 0.42)';
       ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * fs * gap, y);
-      drops[i] += 0.35;
+      drops[i] += speed;
     }
     requestAnimationFrame(draw);
   }
