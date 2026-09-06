@@ -47,6 +47,31 @@
   font-family: var(--mono); letter-spacing: 1px;
   margin-left: 8px; vertical-align: 1px;
 }
+.source-block { margin-bottom: 30px; }
+.source-head {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 12px;
+  font-size: 14px; font-weight: 600; letter-spacing: 1.5px;
+}
+.source-head::before { content: ""; width: 3px; height: 15px; background: var(--accent); border-radius: 1px; box-shadow: 0 0 8px rgba(62,198,224,.6); }
+.a-excerpt {
+  color: var(--muted); font-size: 14px; line-height: 1.9;
+  margin: 6px 0 12px;
+}
+.a-toggle {
+  background: none; border: 1px solid var(--border); color: var(--accent);
+  font-size: 12px; font-family: var(--mono); letter-spacing: 1px;
+  padding: 6px 16px; border-radius: 6px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.a-toggle:hover { border-color: rgba(62,198,224,.5); background: var(--accent-dim); }
+.a-full { margin-top: 10px; }
+.arch-group { margin-top: 4px; }
+.arch-entry {
+  padding: 14px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.arch-entry:last-child { border-bottom: none; }
 .article .a-title-zh {
   font-size: 22px; font-weight: 700; line-height: 1.4; letter-spacing: .5px;
   margin-bottom: 6px;
@@ -192,42 +217,76 @@ function render(){
   const arts = DATA.articles.slice().sort((a,b) => b.date.localeCompare(a.date));
   if (!arts.length) { document.getElementById('articles').innerHTML = ''; return; }
 
-  // 每个来源的最新一篇完整显示，其余折叠
-  const latestBySource = {};
-  const rest = [];
+  // 按来源分组
+  const groups = {};
   arts.forEach(a => {
     const s = a.source || 'other';
-    if (!(s in latestBySource)) latestBySource[s] = a;
-    else rest.push(a);
+    (groups[s] = groups[s] || []).push(a);
   });
-  const latestList = Object.values(latestBySource).sort((a,b) => b.date.localeCompare(a.date));
+  const srcOrder = Object.keys(groups).sort((a,b) =>
+    groups[b][0].date.localeCompare(groups[a][0].date));
 
   let html = '';
-  latestList.forEach(a => {
-    html += '<div class="article latest">' +
-      '<div class="a-date">'+esc(a.date)+'<span class="a-source-tag">'+esc(sourceName(a.source))+'</span></div>' +
-      '<div class="a-title-zh">'+esc(a.title_zh)+'</div>' +
-      '<div class="a-title-en">'+esc(a.title_en)+'</div>' +
-      '<div class="a-author"><b>'+esc(a.author)+'</b> · '+esc(a.author_title)+'</div>' +
-      '<div class="a-body">' + a.body_zh + '</div>' +
-      '<details class="a-en"><summary>英文原文</summary>' +
-        a.body_en + '</details>' +
-      '<a class="a-src" href="'+esc(a.url)+'" target="_blank" rel="noopener">阅读英文原文 ↗</a>' +
-    '</div>';
+  srcOrder.forEach(src => {
+    const list = groups[src];
+    const latest = list[0];
+    const history = list.slice(1);
+    html += '<div class="source-block">';
+    html += '<div class="source-head">'+esc(sourceName(src))+'</div>';
+    html += renderCard(latest);
+    if (history.length) {
+      html += '<details class="arch-item"><summary><span class="d">历史观点</span><span class="t">共 '+history.length+' 篇</span></summary>' +
+        '<div class="arch-group">';
+      history.forEach(a => {
+        html += '<div class="arch-entry">' +
+          '<div class="a-date">'+esc(a.date)+'</div>' +
+          '<div class="a-title-zh" style="font-size:16px">'+esc(a.title_zh)+'</div>' +
+          '<div class="a-excerpt">'+excerpt(a.body_zh)+'</div>' +
+          '<button class="a-toggle" onclick="toggleArticle(this)">展开全文</button>' +
+          '<div class="a-full" style="display:none">' +
+            '<div class="a-title-en" style="margin-bottom:8px">'+esc(a.title_en)+'</div>' +
+            '<div class="a-body">'+a.body_zh+'</div>' +
+            '<details class="a-en"><summary>英文原文</summary>'+a.body_en+'</details>' +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div></details>';
+    }
+    html += '</div>';
   });
-
-  // 历史归档（折叠）
-  if (rest.length) {
-    html += '<div class="archive-title"><div class="bar"></div><h2>历史观点</h2><span class="en">ARCHIVE</span></div>';
-    rest.forEach(a => {
-      html += '<details class="arch-item">' +
-        '<summary><span class="d">'+esc(a.date)+'</span><span class="t">'+esc(a.title_zh)+'</span></summary>' +
-        '<div class="arch-body"><div class="a-title-en" style="margin-bottom:8px">'+esc(a.title_en)+'</div>' +
-          a.body_zh + '</div>' +
-      '</details>';
-    });
-  }
   document.getElementById('articles').innerHTML = html;
+}
+
+function renderCard(a){
+  return '<div class="article">' +
+    '<div class="a-date">'+esc(a.date)+'<span class="a-source-tag">'+esc(sourceName(a.source))+'</span></div>' +
+    '<div class="a-title-zh">'+esc(a.title_zh)+'</div>' +
+    '<div class="a-title-en">'+esc(a.title_en)+'</div>' +
+    '<div class="a-author"><b>'+esc(a.author)+'</b> · '+esc(a.author_title)+'</div>' +
+    '<div class="a-excerpt">'+excerpt(a.body_zh)+'</div>' +
+    '<button class="a-toggle" onclick="toggleArticle(this)">展开全文</button>' +
+    '<div class="a-full" style="display:none">' +
+      '<div class="a-body">'+a.body_zh+'</div>' +
+      '<details class="a-en"><summary>英文原文</summary>'+a.body_en+'</details>' +
+      '<a class="a-src" href="'+esc(a.url)+'" target="_blank" rel="noopener">阅读英文原文 ↗</a>' +
+    '</div>' +
+  '</div>';
+}
+
+function excerpt(html){
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const text = (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+  return text.length > 220 ? text.slice(0, 220) + '……' : text;
+}
+
+function toggleArticle(btn){
+  const full = btn.nextElementSibling;
+  if (full && full.classList.contains('a-full')) {
+    const hidden = full.style.display === 'none';
+    full.style.display = hidden ? 'block' : 'none';
+    btn.textContent = hidden ? '收起全文' : '展开全文';
+  }
 }
 
 render();
