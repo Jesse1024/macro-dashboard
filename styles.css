@@ -54,7 +54,25 @@ body::after {
   position: fixed; inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: .38;
+  opacity: .32;
+}
+/* 扫光：横向光束从上到下扫描 */
+#bg-sweep {
+  position: fixed; inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+#bg-sweep::before {
+  content: "";
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 240px;
+  background: linear-gradient(180deg, transparent, rgba(62, 198, 224, .05) 50%, transparent);
+  animation: bgSweep 11s linear infinite;
+}
+@keyframes bgSweep {
+  0% { transform: translateY(-240px); }
+  100% { transform: translateY(100vh); }
 }
 
 /* ---------- 页头 ---------- */
