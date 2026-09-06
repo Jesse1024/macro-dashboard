@@ -49,6 +49,13 @@ body::after {
     radial-gradient(ellipse 40% 30% at 88% 108%, rgba(62, 198, 224, .05), transparent 70%),
     var(--bg);
 }
+/* 数字雨背景层 */
+#bg-rain {
+  position: fixed; inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .38;
+}
 
 /* ---------- 页头 ---------- */
 header {

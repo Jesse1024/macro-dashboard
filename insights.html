@@ -175,6 +175,7 @@
 </style>
 </head>
 <body>
+<canvas id="bg-rain" aria-hidden="true"></canvas>
 <header>
   <div>
     <div class="kicker">MACRO MONITOR · INSIGHTS</div>
@@ -290,6 +291,40 @@ function toggleArticle(btn){
 }
 
 render();
+</script>
+<script>
+/* 数字雨背景（科技感氛围） */
+(function () {
+  var canvas = document.getElementById('bg-rain');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var fs = 16, cols = 0, drops = [];
+  var chars = '0123456789ABCDEF';
+  function resize() {
+    fs = window.matchMedia('(max-width: 768px)').matches ? 18 : 15;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols = Math.floor(canvas.width / fs);
+    drops = [];
+    for (var i = 0; i < cols; i++) drops.push(Math.random() * -canvas.height / fs);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  function draw() {
+    ctx.fillStyle = 'rgba(6, 11, 19, 0.12)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = fs + 'px "JetBrains Mono", "SF Mono", Consolas, monospace';
+    for (var i = 0; i < cols; i++) {
+      var y = drops[i] * fs;
+      if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      ctx.fillStyle = 'rgba(62, 198, 224, 0.55)';
+      ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * fs, y);
+      drops[i]++;
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
 </script>
 </body>
 </html>
