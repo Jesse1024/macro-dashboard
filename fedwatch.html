@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>美联储加息预期 · 宏观数据看板</title>
+<script src="echarts.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ===== 加息预期页专属样式（复用 styles.css 主题变量） ===== */
+.fed-wrap { max-width: 1180px; margin: 0 auto; }
+.chart-card { padding: 18px 18px 6px; }
+#probChart { width: 100%; height: 420px; }
+.chart-note {
+  color: var(--faint); font-size: 11px; font-family: var(--mono);
+  letter-spacing: .5px; margin-top: 8px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.anchor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.anchor-card { padding: 16px 18px 12px; }
+.anchor-card .card-value .num { font-size: 30px; }
+.table-card { padding: 12px 18px 16px; }
+.table-scroll { overflow-x: auto; }
+.fed-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+.fed-table th {
+  text-align: right; color: var(--faint); font-size: 11px; font-weight: 400;
+  font-family: var(--mono); letter-spacing: .5px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+}
+.fed-table th:first-child, .fed-table td:first-child { text-align: left; padding-left: 0; }
+.fed-table td {
+  text-align: right; padding: 11px 14px; border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+}
+.fed-table tr:last-child td { border-bottom: none; }
+.fed-table .mtg-date { color: var(--text); font-weight: 600; }
+.fed-table .tentative { color: var(--faint); font-size: 11px; font-weight: 400; }
+.fed-table .hike { color: var(--up); }
+.fed-table .rate { color: var(--text); }
+.fed-table .dim { color: var(--muted); }
+.method { font-size: 12px; color: var(--muted); line-height: 1.9; }
+.method b { color: var(--text); font-weight: 600; }
+.method .src-tag {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  color: var(--accent); background: var(--accent-dim);
+  padding: 2px 8px; border-radius: 3px; margin-right: 6px;
+  font-family: var(--mono);
+}
+@media (max-width: 768px) {
+  #probChart { height: 340px; }
+  .anchor-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<canvas id="bg-rain" aria-hidden="true"></canvas>
+<div id="bg-sweep" aria-hidden="true"></div>
+
+<header>
+  <div>
+    <div class="kicker">MACRO MONITOR · FED RATE</div>
+    <h1>美联储加息预期</h1>
+    <div class="sub">市场隐含 FOMC 加息概率 · CME 联邦基金期货定价</div>
+  </div>
+  <div class="updated">数据更新于<br><b id="updatedAt">—</b></div>
+</header>
+
+<div class="navbar">
+  <a href="index.html">数据看板</a>
+  <a href="fedwatch.html" class="active">加息预期</a>
+  <a href="insights.html">KOL 观点</a>
+  <a href="factors.html">因子指数</a>
+</div>
+
+<div class="fed-wrap">
+  <div class="region-title"><div class="bar"></div><h2>锚定信息</h2><span class="en">ANCHOR · EFFR &amp; TARGET RANGE</span></div>
+  <div class="anchor-grid" id="anchorGrid"></div>
+
+  <div class="region-title"><div class="bar"></div><h2>累计加息概率</h2><span class="en">CUMULATIVE HIKE ODDS · RELATIVE TO EFFR</span></div>
+  <div class="card chart-card">
+    <div id="probChart"></div>
+    <div class="chart-note" id="chartNote">—</div>
+  </div>
+
+  <div class="region-title"><div class="bar"></div><h2>各会议明细</h2><span class="en">MEETING DETAILS</span></div>
+  <div class="card table-card">
+    <div class="table-scroll">
+      <table class="fed-table">
+        <thead>
+          <tr>
+            <th>FOMC 会议</th>
+            <th>会议后隐含利率</th>
+            <th>本次加息</th>
+            <th>累计加息</th>
+            <th>累计加息概率</th>
+          </tr>
+        </thead>
+        <tbody id="fedTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="region-title"><div class="bar"></div><h2>计算方法</h2><span class="en">HOW THIS IS COMPUTED</span></div>
+  <div class="card" style="padding:16px 18px 16px;">
+    <div class="method" id="methodNote"></div>
+  </div>
+</div>
+
+<footer>
+  <div class="disclaimer" style="color:var(--faint);font-size:11px;line-height:1.9;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+    数据来源：CME 30 天联邦基金期货（ZQ，产品代码 305）结算价、纽约联储有效联邦基金利率（EFFR）与目标区间（经 FRED）。<br>
+    概率为「市场隐含」——由期货交易价格反推，非官方预测，也非民调；计算口径同 CME FedWatch（25bp 一个步长，会议日算会前，会议月下月无会议时用下月合约定会后利率）。<br>
+    结算价与实时价存在微小差异，数值与 CME FedWatch 官方工具或有 1–2bp 出入；带 * 的 2027 年会议日期为联邦储备官网暂定日程。本页仅为数据展示，不构成投资建议。
+  </div>
+  <div class="sign">南山怪客</div>
+</footer>
+
+<script>
+const DATA = {"as_of": "2026-09-15", "settle_date": "2026-09-14", "effr": 3.63, "effr_date": "2026-09-14", "target_lower": 3.5, "target_upper": 3.75, "meetings": [{"date": "2026-09-16", "post_rate": 3.8657, "cum_bp": 23.6, "cum_pct": 94.3, "meeting_bp": 23.6}, {"date": "2026-10-28", "post_rate": 3.98, "cum_bp": 35.0, "cum_pct": 140.0, "meeting_bp": 11.4}, {"date": "2026-12-09", "post_rate": 4.1491, "cum_bp": 51.9, "cum_pct": 207.6, "meeting_bp": 16.9}, {"date": "2027-01-27", "post_rate": 4.235, "cum_bp": 60.5, "cum_pct": 242.0, "meeting_bp": 8.6}, {"date": "2027-03-17", "post_rate": 4.3789, "cum_bp": 74.9, "cum_pct": 299.6, "meeting_bp": 14.4}, {"date": "2027-04-28", "post_rate": 4.43, "cum_bp": 80.0, "cum_pct": 320.0, "meeting_bp": 5.1}, {"date": "2027-06-09", "post_rate": 4.5014, "cum_bp": 87.1, "cum_pct": 348.6, "meeting_bp": 7.1}]};
+
+const ACCENT = '#3ec6e0', GRID = '#1a2636', MUTED = '#6b7f96';
+const MONO = 'JetBrains Mono, Consolas, monospace';
+
+function esc(s){ return String(s).replace(/[&<>\"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c])); }
+function pct(v, d){ return (v === null || v === undefined) ? '—' : Number(v).toFixed(d == null ? 2 : d) + '%'; }
+function bp(v){ return (v === null || v === undefined) ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(1) + 'bp'; }
+function pctSigned(v){ return (v === null || v === undefined) ? '—' : (v >= 0 ? '+' : '') + Math.round(v) + '%'; }
+
+// 会议日期格式化：横轴用 MM-DD，2027 年加 *
+function shortDate(d){
+  const p = String(d).split('-');
+  const y = p[0], m = p[1], dd = p[2];
+  return m + '-' + dd + (Number(y) >= 2027 ? '*' : '');
+}
+function fullDate(d){
+  const p = String(d).split('-');
+  return p[0] + '-' + p[1] + '-' + p[2] + (Number(p[0]) >= 2027 ? '*' : '');
+}
+
+const meetings = DATA.meetings || [];
+
+function renderAnchor(){
+  const effr = DATA.effr;
+  const next = meetings[0];
+  let html = '';
+  html += '<div class="card anchor-card">' +
+    '<div class="card-head"><span class="name">有效联邦基金利率</span><span class="freq">EFFR</span></div>' +
+    '<div class="card-value"><span class="num">' + (effr == null ? '—' : effr.toFixed(2)) + '</span><span class="unit">%</span></div>' +
+    '<div class="card-meta"><span class="date">纽约联储 · ' + esc(DATA.effr_date || '—') + '</span></div>' +
+  '</div>';
+  html += '<div class="card anchor-card">' +
+    '<div class="card-head"><span class="name">当前目标区间</span><span class="freq">TARGET</span></div>' +
+    '<div class="card-value"><span class="num" style="font-size:24px">' +
+      (DATA.target_lower == null ? '—' : DATA.target_lower.toFixed(2) + '–' + DATA.target_upper.toFixed(2)) +
+    '</span><span class="unit">%</span></div>' +
+    '<div class="card-meta"><span class="date">联邦基金目标利率</span></div>' +
+  '</div>';
+  html += '<div class="card anchor-card">' +
+    '<div class="card-head"><span class="name">下一次 FOMC</span><span class="freq">NEXT</span></div>' +
+    '<div class="card-value"><span class="num" style="font-size:24px">' + (next ? esc(shortDate(next.date)) : '—') + '</span><span class="unit"></span></div>' +
+    '<div class="card-meta"><span class="date">' + (next ? esc(fullDate(next.date)) : '—') + '</span></div>' +
+  '</div>';
+  html += '<div class="card anchor-card">' +
+    '<div class="card-head"><span class="name">结算价日期</span><span class="freq">AS OF</span></div>' +
+    '<div class="card-value"><span class="num" style="font-size:24px">' + esc(DATA.settle_date || '—') + '</span><span class="unit"></span></div>' +
+    '<div class="card-meta"><span class="date">期货结算数据截至</span></div>' +
+  '</div>';
+  document.getElementById('anchorGrid').innerHTML = html;
+}
+
+function renderChart(){
+  const el = document.getElementById('probChart');
+  if (!meetings.length) { el.style.display = 'none'; return; }
+  const xLabels = meetings.map(m => shortDate(m.date));
+  const barData = meetings.map(m => m.cum_pct);
+  const chart = echarts.init(el);
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#0c1420', borderColor: GRID,
+      textStyle: { color: '#dce8f4', fontSize: 12 },
+      axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(62,198,224,.06)' } },
+      formatter: function(params){
+        const p = params[0];
+        const m = meetings[p.dataIndex];
+        if (!m) return '';
+        return '<b>' + esc(fullDate(m.date)) + '</b><br>' +
+          '会议后隐含利率：<b>' + pct(m.post_rate) + '</b><br>' +
+          '本次加息：<b style="color:#f0453a">' + bp(m.meeting_bp) + '</b><br>' +
+          '累计加息（相对 EFFR）：<b style="color:#f0453a">' + bp(m.cum_bp) + '</b><br>' +
+          '累计加息概率：<b style="color:#3ec6e0">' + pctSigned(m.cum_pct) + '</b>';
+      }
+    },
+    grid: { left: 60, right: 30, top: 44, bottom: 44 },
+    xAxis: {
+      type: 'category', data: xLabels,
+      axisLine: { lineStyle: { color: GRID } },
+      axisLabel: { color: MUTED, fontSize: 11, fontFamily: MONO, rotate: 30 },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value', min: 0, max: 400, interval: 100,
+      axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: MUTED, fontSize: 10, fontFamily: MONO, formatter: v => v + '%' },
+      splitLine: { lineStyle: { color: GRID } },
+    },
+    series: [{
+      type: 'bar', data: barData,
+      barWidth: '46%',
+      itemStyle: { color: ACCENT, borderRadius: [3, 3, 0, 0] },
+      label: {
+        show: true, position: 'top',
+        color: ACCENT, fontSize: 11, fontFamily: MONO, fontWeight: 600,
+        formatter: p => '+' + Math.round(p.value) + '%',
+      },
+    }],
+  });
+  window.addEventListener('resize', () => chart.resize());
+}
+
+function renderTable(){
+  let html = '';
+  meetings.forEach(m => {
+    html += '<tr>' +
+      '<td><span class="mtg-date">' + esc(fullDate(m.date)) + '</span></td>' +
+      '<td class="rate">' + pct(m.post_rate) + '</td>' +
+      '<td class="hike">' + bp(m.meeting_bp) + '</td>' +
+      '<td class="hike">' + bp(m.cum_bp) + '</td>' +
+      '<td class="rate" style="color:var(--accent)">' + pctSigned(m.cum_pct) + '</td>' +
+    '</tr>';
+  });
+  document.getElementById('fedTable').innerHTML = html;
+}
+
+function renderMethod(){
+  const effr = DATA.effr;
+  const el = document.getElementById('methodNote');
+  el.innerHTML =
+    '<span class="src-tag">CME</span>30 天联邦基金期货结算价（合约价 = 100 − 隐含月均利率）' +
+    '<br><span class="src-tag">EFFR</span>纽约联储有效联邦基金利率，当前锚定 ' +
+    (effr == null ? '—' : effr.toFixed(2)) + '%' +
+    '<br><b>概率怎么来</b>：把会议月合约的隐含月均利率，按会议日拆成「会前」与「会后」两段，解出市场预期的会后利率；' +
+    '会后利率 − 当前 EFFR = 定价的累计加息幅度（bp），再除以 25bp 即得累计概率。' +
+    '<br><b>读数方式</b>：柱值 +94% 表示市场定价 94% 概率在本次会议加息一次（25bp）；+138% 表示已完全定价一次加息、另有 38% 概率加第二次。' +
+    '<br><b>口径说明</b>：假设每次以 25bp 整数倍变动；会议日算会前；若会议所在月的下一个月无 FOMC 会议，则用下月合约直接定会后利率（下月利率恒定）。';
+}
+
+function render(){
+  document.getElementById('updatedAt').textContent = DATA.as_of || '—';
+  document.getElementById('chartNote').textContent =
+    '纵轴为累计加息概率（100% = 一次 25bp 加息）· 柱上数字为相对当前 EFFR 的累计定价 · 带 * 为 2027 年暂定会议日期';
+  renderAnchor();
+  renderChart();
+  renderTable();
+  renderMethod();
+}
+
+render();
+</script>
+<script>
+/* 数字雨背景（科技感氛围）—— 稀疏慢速 */
+(function () {
+  var canvas = document.getElementById('bg-rain');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var fs = 18, gap = 2, cols = 0, drops = [], speed = 0.35;
+  var chars = '0123456789ABCDEF';
+  function resize() {
+    var isMobile = window.matchMedia('(max-width: 768px)').matches;
+    fs = isMobile ? 24 : 18;
+    speed = isMobile ? 0.15 : 0.35;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols = Math.floor(canvas.width / (fs * gap));
+    drops = [];
+    for (var i = 0; i < cols; i++) drops.push(Math.random() * -canvas.height / fs);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  function draw() {
+    ctx.fillStyle = 'rgba(6, 11, 19, 0.07)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = fs + 'px "JetBrains Mono", "SF Mono", Consolas, monospace';
+    for (var i = 0; i < cols; i++) {
+      var y = drops[i] * fs;
+      if (y > canvas.height && Math.random() > 0.98) drops[i] = 0;
+      ctx.fillStyle = 'rgba(62, 198, 224, 0.42)';
+      ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * fs * gap, y);
+      drops[i] += speed;
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
