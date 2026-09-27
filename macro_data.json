@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-26 21:00:27",
+  "updated_at": "2026-09-27 12:46:29",
   "timezone": "Asia/Shanghai",
   "indicators": [
     {
@@ -13035,7 +13035,7 @@
         }
       ],
       "weekday": "周三",
-      "days_until": 4
+      "days_until": 3
     },
     {
       "date": "2026-10-01",
@@ -13050,7 +13050,7 @@
         }
       ],
       "weekday": "周四",
-      "days_until": 5
+      "days_until": 4
     },
     {
       "date": "2026-10-02",
@@ -13065,7 +13065,7 @@
         }
       ],
       "weekday": "周五",
-      "days_until": 6
+      "days_until": 5
     },
     {
       "date": "2026-10-14",
@@ -13096,7 +13096,7 @@
         }
       ],
       "weekday": "周三",
-      "days_until": 18
+      "days_until": 17
     },
     {
       "date": "2026-10-15",
@@ -13111,7 +13111,7 @@
         }
       ],
       "weekday": "周四",
-      "days_until": 19
+      "days_until": 18
     },
     {
       "date": "2026-10-19",
@@ -13126,7 +13126,7 @@
         }
       ],
       "weekday": "周一",
-      "days_until": 23
+      "days_until": 22
     },
     {
       "date": "2026-10-29",
@@ -13141,7 +13141,7 @@
         }
       ],
       "weekday": "周四",
-      "days_until": 33
+      "days_until": 32
     }
   ],
   "bond_yields": [
@@ -13152,10 +13152,6 @@
         {
           "name": "1年期",
           "series": [
-            {
-              "date": "2026-03-30",
-              "value": 1.2112
-            },
             {
               "date": "2026-03-31",
               "value": 1.2212
@@ -13662,10 +13658,6 @@
           "name": "10年期",
           "series": [
             {
-              "date": "2026-03-30",
-              "value": 1.8063
-            },
-            {
               "date": "2026-03-31",
               "value": 1.8171
             },
@@ -14170,10 +14162,6 @@
         {
           "name": "30年期",
           "series": [
-            {
-              "date": "2026-03-30",
-              "value": 2.3286
-            },
             {
               "date": "2026-03-31",
               "value": 2.3521
