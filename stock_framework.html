@@ -63,7 +63,6 @@
 </style>
 </head>
 <body>
-<canvas id="bg-rain" aria-hidden="true"></canvas>
 <div id="bg-sweep" aria-hidden="true"></div>
 
 <header>
@@ -233,42 +232,6 @@ function render(){
 }
 
 render();
-</script>
-<script>
-/* 数字雨背景 */
-(function () {
-  var canvas = document.getElementById('bg-rain');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var fs = 18, gap = 2, cols = 0, drops = [], speed = 0.35;
-  var chars = '0123456789ABCDEF';
-  function resize() {
-    var isMobile = window.matchMedia('(max-width: 768px)').matches;
-    fs = isMobile ? 24 : 18;
-    speed = isMobile ? 0.15 : 0.35;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    cols = Math.floor(canvas.width / (fs * gap));
-    drops = [];
-    for (var i = 0; i < cols; i++) drops.push(Math.random() * -canvas.height / fs);
-  }
-  resize();
-  window.addEventListener('resize', resize);
-  function draw() {
-    ctx.fillStyle = 'rgba(6, 11, 19, 0.07)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.font = fs + 'px "JetBrains Mono", "SF Mono", Consolas, monospace';
-    for (var i = 0; i < cols; i++) {
-      var y = drops[i] * fs;
-      if (y > canvas.height && Math.random() > 0.98) drops[i] = 0;
-      ctx.fillStyle = 'rgba(62, 198, 224, 0.42)';
-      ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * fs * gap, y);
-      drops[i] += speed;
-    }
-    requestAnimationFrame(draw);
-  }
-  draw();
-})();
 </script>
 </body>
 </html>
