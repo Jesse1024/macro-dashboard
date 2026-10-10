@@ -19,6 +19,7 @@
 .market-table td.m-name { font-weight: 500; }
 .market-table tr:last-child td { border-bottom: none; }
 .market-table td.na-cell { color: #e6a23c; font-size: 12px; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .chg-up { color: var(--up); }
 .chg-down { color: var(--down); }
 .chg-flat { color: var(--muted); }
@@ -53,6 +54,11 @@
 @media (max-width: 768px) {
   #vixChart { height: 300px; }
   .fw-grid { grid-template-columns: 1fr; }
+  /* 市场情况表格：手机端缩字体间距，横向可滑动 */
+  .market-table { font-size: 12px; min-width: 540px; }
+  .market-table th { padding: 7px 8px; }
+  .market-table td { padding: 8px 8px; }
+  .market-table th:first-child, .market-table td:first-child { position: sticky; left: 0; background: #0d1624; z-index: 1; }
 }
 </style>
 </head>
