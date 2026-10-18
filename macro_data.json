@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-17 21:00:38",
+  "updated_at": "2026-10-18 10:33:43",
   "timezone": "Asia/Shanghai",
   "indicators": [
     {
@@ -13067,7 +13067,7 @@
         }
       ],
       "weekday": "周一",
-      "days_until": 2
+      "days_until": 1
     },
     {
       "date": "2026-10-29",
@@ -13082,7 +13082,7 @@
         }
       ],
       "weekday": "周四",
-      "days_until": 12
+      "days_until": 11
     },
     {
       "date": "2026-10-29",
@@ -13097,7 +13097,7 @@
         }
       ],
       "weekday": "周四",
-      "days_until": 12
+      "days_until": 11
     },
     {
       "date": "2026-10-31",
@@ -13112,7 +13112,7 @@
         }
       ],
       "weekday": "周六",
-      "days_until": 14
+      "days_until": 13
     },
     {
       "date": "2026-11-02",
@@ -13127,7 +13127,7 @@
         }
       ],
       "weekday": "周一",
-      "days_until": 16
+      "days_until": 15
     },
     {
       "date": "2026-11-06",
@@ -13142,7 +13142,7 @@
         }
       ],
       "weekday": "周五",
-      "days_until": 20
+      "days_until": 19
     },
     {
       "date": "2026-11-09",
@@ -13165,7 +13165,7 @@
         }
       ],
       "weekday": "周一",
-      "days_until": 23
+      "days_until": 22
     },
     {
       "date": "2026-11-10",
@@ -13184,7 +13184,7 @@
         }
       ],
       "weekday": "周二",
-      "days_until": 24
+      "days_until": 23
     },
     {
       "date": "2026-11-13",
@@ -13199,7 +13199,7 @@
         }
       ],
       "weekday": "周五",
-      "days_until": 27
+      "days_until": 26
     }
   ],
   "bond_yields": [
@@ -13210,10 +13210,6 @@
         {
           "name": "1年期",
           "series": [
-            {
-              "date": "2026-04-20",
-              "value": 1.1613
-            },
             {
               "date": "2026-04-21",
               "value": 1.1538
@@ -13708,10 +13704,6 @@
           "name": "10年期",
           "series": [
             {
-              "date": "2026-04-20",
-              "value": 1.7627
-            },
-            {
               "date": "2026-04-21",
               "value": 1.751
             },
@@ -14204,10 +14196,6 @@
         {
           "name": "30年期",
           "series": [
-            {
-              "date": "2026-04-20",
-              "value": 2.2556
-            },
             {
               "date": "2026-04-21",
               "value": 2.2375
