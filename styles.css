@@ -368,3 +368,14 @@ footer .sign::before { content: "— "; color: var(--faint); }
   .fx-value { font-size: 22px; }
   footer { font-size: 10px; }
 }
+
+/* 卡片导出 PNG 按钮 */
+.card-head { justify-content: flex-start; gap: 8px; }
+.card-head .name { margin-right: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-export {
+  flex: 0 0 auto; border: 1px solid var(--border); background: rgba(62,198,224,.05);
+  color: var(--faint); font-size: 11px; line-height: 1; padding: 4px 8px; border-radius: 4px;
+  cursor: pointer; font-family: var(--mono); letter-spacing: .5px; transition: .15s;
+}
+.btn-export:hover { color: var(--accent); border-color: var(--accent); background: rgba(62,198,224,.12); }
+.btn-export:active { transform: translateY(1px); }
