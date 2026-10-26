@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>宏观经济数据看板</title>
 <script src="echarts.min.js"></script>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261026b">
 </head>
 <body>
 <canvas id="bg-rain" aria-hidden="true"></canvas>
@@ -661,20 +661,36 @@ function showExportPreview(dataUrl, filename){
   if (old) old.remove();
   var mask = document.createElement('div');
   mask.id = 'exportMask';
+  mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:#050a11;' +
+    'display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto;' +
+    '-webkit-overflow-scrolling:touch;font-family:' + EXPORT_FONT + ';';
   var tip = '长按图片保存到相册';
   if (isWechatView()) tip = '长按图片保存到相册 · 若长按无反应，点右上角「···」选「在浏览器打开」再导出';
-  mask.innerHTML =
-    '<div class="em-box">' +
-      '<div class="em-tip">' + tip + '</div>' +
-      '<img src="' + dataUrl + '" alt="导出图片">' +
-      '<div class="em-actions">' +
-        '<a class="em-btn em-dl" href="' + dataUrl + '" download="' + filename + '">保存图片</a>' +
-        '<button class="em-btn em-close" type="button">关闭</button>' +
-      '</div>' +
-    '</div>';
+  var box = document.createElement('div');
+  box.style.cssText = 'width:100%;max-width:560px;margin:auto;';
+  var tipEl = document.createElement('div');
+  tipEl.style.cssText = 'color:#8fa6bd;font-size:13px;line-height:1.7;text-align:center;margin-bottom:14px;padding:0 6px;';
+  tipEl.textContent = tip;
+  var imgEl = document.createElement('img');
+  imgEl.src = dataUrl;
+  imgEl.alt = '导出图片';
+  imgEl.style.cssText = 'width:100%;height:auto;display:block;border:1px solid #1a2636;border-radius:8px;';
+  var acts = document.createElement('div');
+  acts.style.cssText = 'display:flex;gap:10px;margin-top:16px;';
+  var btnBase = 'flex:1;padding:13px 10px;border-radius:8px;font-size:15px;font-family:inherit;' +
+    'border:1px solid #1a2636;background:#0c1420;color:#dce8f4;text-align:center;text-decoration:none;cursor:pointer;';
+  var dlBtn = document.createElement('a');
+  dlBtn.href = dataUrl; dlBtn.download = filename; dlBtn.textContent = '保存图片';
+  dlBtn.style.cssText = btnBase + 'background:rgba(62,198,224,.14);border-color:#3ec6e0;color:#3ec6e0;font-weight:600;';
+  var closeBtn = document.createElement('button');
+  closeBtn.type = 'button'; closeBtn.textContent = '关闭';
+  closeBtn.style.cssText = btnBase;
+  acts.appendChild(dlBtn); acts.appendChild(closeBtn);
+  box.appendChild(tipEl); box.appendChild(imgEl); box.appendChild(acts);
+  mask.appendChild(box);
   document.body.appendChild(mask);
   document.body.style.overflow = 'hidden';
-  mask.querySelector('.em-close').addEventListener('click', function(){
+  closeBtn.addEventListener('click', function(){
     mask.remove(); document.body.style.overflow = '';
   });
   mask.addEventListener('click', function(e){ if (e.target === mask) { mask.remove(); document.body.style.overflow = ''; } });
