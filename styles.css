@@ -379,3 +379,26 @@ footer .sign::before { content: "— "; color: var(--faint); }
 }
 .btn-export:hover { color: var(--accent); border-color: var(--accent); background: rgba(62,198,224,.12); }
 .btn-export:active { transform: translateY(1px); }
+
+/* 移动端导出预览层 */
+#exportMask {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99999;
+  background: #050a11; display: flex; align-items: center; justify-content: center;
+  padding: 18px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+#exportMask .em-box { width: 100%; max-width: 560px; }
+#exportMask .em-tip {
+  color: #8fa6bd; font-size: 13px; line-height: 1.7; text-align: center;
+  margin-bottom: 14px; padding: 0 6px;
+}
+#exportMask img {
+  width: 100%; height: auto; display: block; border: 1px solid #1a2636; border-radius: 8px;
+  -webkit-touch-callout: default;
+}
+#exportMask .em-actions { display: flex; gap: 10px; margin-top: 16px; }
+#exportMask .em-btn {
+  flex: 1; padding: 13px 10px; border-radius: 8px; font-size: 15px; font-family: inherit;
+  border: 1px solid #1a2636; background: #0c1420; color: #dce8f4; text-align: center;
+  text-decoration: none; cursor: pointer;
+}
+#exportMask .em-dl { background: rgba(62,198,224,.14); border-color: #3ec6e0; color: #3ec6e0; font-weight: 600; }
