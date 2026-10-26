@@ -652,8 +652,37 @@ function initChart(el, it){
 
 
 /* ================= 导出卡片为 PNG ================= */
+function isMobileView(){ return /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) || window.innerWidth < 820; }
+function isWechatView(){ return /MicroMessenger/i.test(navigator.userAgent); }
+
+/* 手机端：微信/Safari 不认 a[download]，改成弹层让用户长按保存 */
+function showExportPreview(dataUrl, filename){
+  var old = document.getElementById('exportMask');
+  if (old) old.remove();
+  var mask = document.createElement('div');
+  mask.id = 'exportMask';
+  var tip = '长按图片保存到相册';
+  if (isWechatView()) tip = '长按图片保存到相册 · 若长按无反应，点右上角「···」选「在浏览器打开」再导出';
+  mask.innerHTML =
+    '<div class="em-box">' +
+      '<div class="em-tip">' + tip + '</div>' +
+      '<img src="' + dataUrl + '" alt="导出图片">' +
+      '<div class="em-actions">' +
+        '<a class="em-btn em-dl" href="' + dataUrl + '" download="' + filename + '">保存图片</a>' +
+        '<button class="em-btn em-close" type="button">关闭</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(mask);
+  document.body.style.overflow = 'hidden';
+  mask.querySelector('.em-close').addEventListener('click', function(){
+    mask.remove(); document.body.style.overflow = '';
+  });
+  mask.addEventListener('click', function(e){ if (e.target === mask) { mask.remove(); document.body.style.overflow = ''; } });
+}
+
+
 /* 导出专用：按大白板重绘图表（不带 dataZoom 滑块，全部数据点），比直接截 400px 卡片图清晰得多 */
-function renderExportChart(it, w, h){
+function renderExportChart(it, w, h, pr){
   var div = document.createElement('div');
   div.style.cssText = 'position:fixed;left:-99999px;top:0;width:' + w + 'px;height:' + h + 'px;';
   document.body.appendChild(div);
@@ -696,7 +725,7 @@ function renderExportChart(it, w, h){
       }
     }]
   });
-  var url = c.getDataURL({ pixelRatio: 2, backgroundColor: '#060b13' });
+  var url = c.getDataURL({ pixelRatio: pr || 2, backgroundColor: '#060b13' });
   c.dispose(); div.remove();
   return url;
 }
@@ -710,7 +739,7 @@ function exportCard(it, card, btn){
   if (!inst) { return; }
   var prevTxt = btn ? btn.textContent : '';
   if (btn) { btn.textContent = '生成中'; btn.disabled = true; }
-  var url = renderExportChart(it, 1180, 500);
+  var url = renderExportChart(it, 1180, 500, isMobileView() ? 1.6 : 2);
   var img = new Image();
   img.onload = function(){
     var W = 1000, PAD = 44;
@@ -762,6 +791,12 @@ function exportCard(it, card, btn){
     ctx.fillStyle = '#6b7f96'; ctx.font = 'bold 21px ' + EXPORT_FONT;
     var sig = '— 南山怪客';
     ctx.fillText(sig, W - PAD - ctx.measureText(sig).width, H - 44);
+
+    if (isMobileView()) {
+      showExportPreview(cv.toDataURL('image/png'), (it.name || 'data').replace(/[\/:*?"<>|\s]+/g, '_') + '_' + (it.latest_date || '') + '.png');
+      if (btn) { btn.textContent = prevTxt; btn.disabled = false; }
+      return;
+    }
 
     cv.toBlob(function(blob){
       var a = document.createElement('a');
