@@ -560,13 +560,19 @@ function buildCard(it){
     : '';
 
   card.innerHTML =
-    '<div class="card-head"><span class="name">'+esc(it.name)+'</span><span class="freq">'+esc(it.freq)+'</span></div>'+
+    '<div class="card-head"><span class="name">'+esc(it.name)+'</span><span class="freq">'+esc(it.freq)+'</span>'+
+      '<button class="btn-export" data-export="'+esc(it.id)+'" title="导出为 PNG 图片">导出</button></div>'+
     '<div class="card-value"><span class="num">'+fmtVal(it.latest_value)+'</span><span class="unit">'+esc(it.unit)+'</span></div>'+
     '<div class="card-meta"><span class="date">'+esc(it.latest_date)+'</span><span class="chg '+chgCls+'">'+chgTxt+'</span>'+staleHtml+fredHtml+'</div>'+
     nrHtml +
     note +
     '<div class="chart" id="c-'+esc(it.id)+'"></div>'+
     def;
+
+  card.querySelector('.btn-export').addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    exportCard(it, card, this);
+  });
 
   return card;
 }
@@ -642,6 +648,133 @@ function initChart(el, it){
   };
   c.setOption(option);
   return c;
+}
+
+
+/* ================= 导出卡片为 PNG ================= */
+/* 导出专用：按大白板重绘图表（不带 dataZoom 滑块，全部数据点），比直接截 400px 卡片图清晰得多 */
+function renderExportChart(it, w, h){
+  var div = document.createElement('div');
+  div.style.cssText = 'position:fixed;left:-99999px;top:0;width:' + w + 'px;height:' + h + 'px;';
+  document.body.appendChild(div);
+  var c = echarts.init(div);
+  var dates = it.series.map(function(s){ return s.date; });
+  var vals = it.series.map(function(s){ return s.value; });
+  var isBar = it.chart === 'bar';
+  var isStep = it.id === 'us_fed';
+  c.setOption({
+    backgroundColor: '#060b13',
+    animation: false,
+    grid: { left: 14, right: 18, top: 22, bottom: 30, containLabel: true },
+    xAxis: {
+      type: 'category', data: dates, boundaryGap: isBar,
+      axisLine: { lineStyle: { color: GRID } },
+      axisLabel: { color: MUTED, fontSize: 12, interval: 'auto', hideOverlap: true },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value', scale: true,
+      splitLine: { lineStyle: { color: GRID } },
+      axisLabel: { color: MUTED, fontSize: 13 }
+    },
+    series: [{
+      type: isBar ? 'bar' : 'line',
+      data: vals, smooth: !isBar && !isStep, step: isStep ? 'end' : false,
+      symbol: 'none',
+      lineStyle: { width: 2.2, color: ACCENT },
+      itemStyle: { color: ACCENT },
+      barWidth: '55%',
+      markLine: (it.id === 'cn_pmi' || it.id === 'us_ism_pmi') ? {
+        silent: true, symbol: 'none',
+        lineStyle: { color: 'rgba(125,138,153,.5)', type: 'dashed' },
+        label: { show: true, formatter: '荣枯线 50', position: 'insideEndTop', color: MUTED, fontSize: 11 },
+        data: [{ yAxis: 50 }]
+      } : undefined,
+      areaStyle: isBar ? undefined : {
+        color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: 'rgba(62,198,224,.22)' }, { offset: 1, color: 'rgba(62,198,224,0)' }] }
+      }
+    }]
+  });
+  var url = c.getDataURL({ pixelRatio: 2, backgroundColor: '#060b13' });
+  c.dispose(); div.remove();
+  return url;
+}
+
+
+var EXPORT_FONT = '"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC",sans-serif';
+
+function exportCard(it, card, btn){
+  var el = card.querySelector('.chart');
+  var inst = el ? echarts.getInstanceByDom(el) : null;
+  if (!inst) { return; }
+  var prevTxt = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '生成中'; btn.disabled = true; }
+  var url = renderExportChart(it, 1180, 500);
+  var img = new Image();
+  img.onload = function(){
+    var W = 1000, PAD = 44;
+    var chartW = W - PAD * 2;
+    var chartH = Math.round(chartW * img.height / img.width);
+    var headH = 178, footH = 112;
+    var H = headH + chartH + footH;
+    var cv = document.createElement('canvas');
+    cv.width = W * 2; cv.height = H * 2;
+    var ctx = cv.getContext('2d');
+    ctx.scale(2, 2);
+
+    ctx.fillStyle = '#060b13'; ctx.fillRect(0, 0, W, H);
+    var g = ctx.createLinearGradient(0, 0, 0, 150);
+    g.addColorStop(0, 'rgba(62,198,224,.10)'); g.addColorStop(1, 'rgba(6,11,19,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 150);
+
+    ctx.fillStyle = '#3ec6e0'; ctx.fillRect(PAD, 38, 4, 42);
+
+    ctx.fillStyle = '#dce8f4';
+    ctx.font = 'bold 30px ' + EXPORT_FONT;
+    ctx.fillText(it.name, PAD + 18, 70);
+
+    ctx.fillStyle = '#3ec6e0';
+    ctx.font = 'bold 50px ' + EXPORT_FONT;
+    var val = (it.latest_value === null || it.latest_value === undefined) ? '—' : fmtVal(it.latest_value);
+    var unit = it.unit ? ' ' + it.unit : '';
+    ctx.fillText(val, PAD, 140);
+    var valW = ctx.measureText(val).width;
+
+    ctx.fillStyle = '#8fa6bd';
+    ctx.font = '24px ' + EXPORT_FONT;
+    ctx.fillText(unit, PAD + valW + 6, 140);
+
+    var sub = (it.latest_date || '') + '  ·  ' + (it.freq || '') + (it.source ? '  ·  ' + it.source : '');
+    ctx.fillStyle = '#6b7f96';
+    ctx.font = '15px ' + EXPORT_FONT;
+    ctx.fillText(sub, PAD, 168);
+
+    ctx.drawImage(img, PAD, headH, chartW, chartH);
+
+    ctx.strokeStyle = '#1a2636'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD, H - 88); ctx.lineTo(W - PAD, H - 88); ctx.stroke();
+
+    ctx.fillStyle = '#45576c'; ctx.font = '15px ' + EXPORT_FONT;
+    ctx.fillText('数据来源：' + (it.source || '—'), PAD, H - 56);
+    ctx.fillText('导出时间：' + new Date().toLocaleString('zh-CN'), PAD, H - 32);
+
+    ctx.fillStyle = '#6b7f96'; ctx.font = 'bold 21px ' + EXPORT_FONT;
+    var sig = '— 南山怪客';
+    ctx.fillText(sig, W - PAD - ctx.measureText(sig).width, H - 44);
+
+    cv.toBlob(function(blob){
+      var a = document.createElement('a');
+      var fn = (it.name || 'data').replace(/[\/:*?"<>|\s]+/g, '_') + '_' + (it.latest_date || '') + '.png';
+      a.href = URL.createObjectURL(blob);
+      a.download = fn;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+      if (btn) { btn.textContent = prevTxt; btn.disabled = false; }
+    }, 'image/png');
+  };
+  img.onerror = function(){ if (btn) { btn.textContent = prevTxt; btn.disabled = false; } };
+  img.src = url;
 }
 
 renderCalendar();
