@@ -346,7 +346,8 @@ function renderVerdict() {
   }
   if (wp && hs && wp.date === hs.date) {
     const gapW = wp.chg - hs.chg;
-    t += '微盘股（华证微盘）收 <b>' + pctText(wp.chg) + '</b>，比沪深300 ' +
+    t += '微盘股（华证微盘）' + (wp.chg < 0 ? '跌 <b>' : '涨 <b>') +
+      Math.abs(wp.chg).toFixed(2) + '%</b>，比沪深300 ' +
       (gapW < 0 ? '多跌 <b>' : '少跌 <b>') + Math.abs(gapW).toFixed(2) + '</b> 个百分点。';
   }
   t += '全市场（中证全指）成交量 <b>' + fmt(qz.volume / 1e8, 2) + '</b> 亿手。';
