@@ -77,7 +77,7 @@
   <div>
     <div class="kicker">MACRO MONITOR · A-SHARE DAILY</div>
     <h1>股市框架</h1>
-    <div class="sub">全市场走势 · 成交量 · 宽基指数每日概览</div>
+    <div class="sub">中证全指走势 · 成交量 · 宽基指数每日概览</div>
   </div>
   <div class="updated">数据更新于<br><b id="updatedAt">—</b></div>
 </header>
@@ -127,7 +127,7 @@
 <footer>
   <div class="disclaimer" style="color:var(--faint);font-size:11px;line-height:1.9;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
     数据来源：东方财富（沪深300 / 中证500 / 中证1000 / 中证全指）、中证指数官网（中证2000）。<br>
-    万得全A（881001.WI）为 Wind 自有编制指数、无公开数据源，本页以中证全指 000985 替代；小市值指数取华证微盘 999010（华证指数官网 idmt.chindices.com，规模类纯微盘口径，无成交量字段）。<br>
+    全市场走势取中证全指 000985（覆盖全部 A 股、自由流通市值加权）；小市值指数取华证微盘 999010（华证指数官网 idmt.chindices.com，规模类纯微盘口径，无成交量字段）。<br>
     本页仅为数据展示，不构成任何投资建议。
   </div>
   <div class="sign">南山怪客</div>
@@ -147,7 +147,7 @@ function fmt(n, d) {
 function pctClass(v) { return v > 0.005 ? 'chg-up' : (v < -0.005 ? 'chg-down' : 'chg-flat'); }
 function pctText(v) { return (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%'; }
 
-/* ---------- 全 A 序列：万得全A 无公开源，以中证全指替代 ---------- */
+/* ---------- 全市场序列：中证全指 000985 ---------- */
 function allASeries() {
   const idx = DATA.indices || {};
   const pick = idx.zzqz || idx.gzaz;
@@ -270,8 +270,7 @@ function renderAllA() {
     ' 个交易日）· 最新收盘 <b>' + fmt(last.close, 2) + '</b> · 涨跌 ' +
     '<span class="' + pctClass(chg) + '">' + pctText(chg) + '</span> · 成交量 <b>' +
     fmt(last.volume / 1e8, 2) + '</b> 亿手<br>' +
-    '口径：万得全A（881001.WI）为 Wind 自有指数、无公开数据源，此处以 <b>中证全指 000985</b> 替代' +
-    '（同为全部 A 股、自由流通市值加权，点位不同但走势同步）';
+    '口径：<b>中证全指 000985</b>，覆盖全部 A 股、自由流通市值加权';
 
   // 只绑一次；跨过手机断点时要重建图表（有无滑杆的配置不同）
   if (!window.__sfResizeBound) {
@@ -294,7 +293,7 @@ const ORDER = [
   { key: 'zz500',  label: '中证500',    tag: '000905' },
   { key: 'zz1000', label: '中证1000',   tag: '000852' },
   { key: 'zz2000', label: '中证2000',   tag: '932000' },
-  { key: 'zzqz',   label: '万得全A',    tag: '以中证全指 000985 替代' },
+  { key: 'zzqz',   label: '中证全指',   tag: '000985' },
   { key: 'hzwp',   label: '小市值指数', tag: '华证微盘 999010' }
 ];
 
