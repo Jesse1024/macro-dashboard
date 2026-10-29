@@ -72,6 +72,14 @@
 /* ===== 宽基 ETF 资金跟踪 ===== */
 #etfChart { width: 100%; height: 380px; }
 .etf-asof { color: var(--muted); font-size: 12px; margin: 2px 0 10px; font-family: var(--mono); }
+/* 极值数值行：从图内气泡搬到图外，彻底避免被画布边界裁掉 */
+.etf-extremes { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  font: 12.5px/1.6 var(--mono); margin: 0 0 8px; letter-spacing: .2px; }
+/* 数值与日期绑成一组，换行时不会被拆散 */
+.etf-extremes .ex-item { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.etf-extremes .hi { color: #f0453a; font-weight: 600; }
+.etf-extremes .lo { color: #2ebd6b; font-weight: 600; }
+.etf-extremes .d { color: var(--faint); font-size: 11px; font-weight: 400; }
 .etf-table { width: 100%; border-collapse: collapse; font: 12.5px/1.5 var(--mono); white-space: nowrap; }
 .etf-table th { color: var(--muted); font-weight: 500; font-size: 11.5px; padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: right; background: #091019; }
 .etf-table th:first-child, .etf-table th:nth-child(2) { text-align: left; }
@@ -83,7 +91,9 @@
 .etf-table tr.total td { border-top: 1px solid var(--border); color: var(--text); font-weight: 600; padding-top: 9px; }
 .etf-table tr.total td.v { color: #e6d24a; }
 @media (max-width: 768px) {
-  #etfChart { height: 260px; }
+  #etfChart { height: 250px; }
+  .etf-extremes { font-size: 13.5px; gap: 10px; margin-bottom: 6px; }
+  .etf-extremes .d { font-size: 11px; }
   .etf-table { font-size: 10.5px; }
   .etf-table td, .etf-table th { padding: 5px 4px; }
 }
@@ -148,6 +158,7 @@
   </div>
   <div class="card chart-card" style="padding:16px 18px 10px">
     <div class="etf-asof" id="etfAsof">—</div>
+    <div class="etf-extremes" id="etfExtremes"></div>
     <div id="etfChart"></div>
     <div class="chart-note" id="etfNote">—</div>
   </div>
@@ -487,38 +498,79 @@ function renderEtf() {
   const hist = ETF.history || [];
   const dates = hist.map(x => x.date);
   const vals = hist.map(x => x.ratio);
-  const chart = echarts.init(document.getElementById('etfChart'));
-  chart.setOption({
-    backgroundColor: 'transparent',
-    grid: { left: 56, right: 30, top: 30, bottom: 70 },
-    tooltip: { trigger: 'axis', backgroundColor: '#0c1420', borderColor: GRID,
-      textStyle: { color: '#dce8f4', fontSize: 12 },
-      formatter: p => p[0].axisValue + '<br/>比率 ' + p[0].data.toFixed(2) + '%' },
-    xAxis: { type: 'category', data: dates, boundaryGap: false,
-      axisLine: { lineStyle: { color: GRID } },
-      axisLabel: { color: MUTED, fontSize: 10, rotate: 45, interval: Math.max(0, Math.floor(dates.length / 18)) },
-      axisTick: { show: false } },
-    yAxis: { type: 'value', scale: true, axisLine: { show: false }, axisTick: { show: false },
-      splitLine: { lineStyle: { color: GRID } },
-      axisLabel: { color: MUTED, fontSize: 11, formatter: v => v.toFixed(2) + '%' } },
-    series: [{
-      type: 'line', data: vals, showSymbol: false,
-      lineStyle: { color: '#2f6fb5', width: 2.2 },
-      itemStyle: { color: '#2f6fb5' },
-      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-        { offset: 0, color: 'rgba(62,198,224,.18)' }, { offset: 1, color: 'rgba(62,198,224,0)' }]) },
-      markPoint: { symbolSize: 44, symbolOffset: [0, -26],
-        data: [
-          { type: 'min', name: '最低', itemStyle: { color: '#2ebd6b' },
-            label: { color: '#fff', fontSize: 11, formatter: p => p.value.toFixed(2) + '%' } },
-          { type: 'max', name: '最高', itemStyle: { color: '#f0453a' },
-            label: { color: '#fff', fontSize: 11, formatter: p => p.value.toFixed(2) + '%' } }
-        ] }
-    }]
+
+  // 极值数值独立成行放在图外：图内气泡会随极值点位置浮动，靠近顶部时必被画布裁掉
+  let maxVal = null, minVal = null, maxIdx = -1, minIdx = -1;
+  vals.forEach((v, i) => {
+    if (v == null) return;
+    if (maxVal === null || v > maxVal) { maxVal = v; maxIdx = i; }
+    if (minVal === null || v < minVal) { minVal = v; minIdx = i; }
   });
+  const exEl = document.getElementById('etfExtremes');
+  // 这里用 innerHTML 是为了让最高/最低两种颜色分别生效。
+  // 拼进去的只有两样东西：toFixed(2) 得到的数字，和 dates[] 里的日期字符串。
+  // dates 来自 build_stock_framework.py 生成的 stock_framework_data.json，是抓取脚本
+  // 从腾讯/中证/华证接口取到的日期字段，不含用户输入，不存在注入面。
+  if (maxVal === null) {
+    exEl.innerHTML = '';
+  } else {
+    // 同年内只显示 MM-DD，跨年才带年份，避免手机上过长被拆行
+    const sameYear = dates[maxIdx].slice(0, 4) === dates[minIdx].slice(0, 4);
+    const dayOf = s => sameYear ? s.slice(5) : s;
+    exEl.innerHTML =
+      '<span class="ex-item"><span class="hi">▲ 最高 ' + maxVal.toFixed(2) + '%</span>' +
+      '<span class="d">' + dayOf(dates[maxIdx]) + '</span></span>' +
+      '<span class="ex-item"><span class="lo">▼ 最低 ' + minVal.toFixed(2) + '%</span>' +
+      '<span class="d">' + dayOf(dates[minIdx]) + '</span></span>';
+  }
+
+  const etfChart = echarts.init(document.getElementById('etfChart'));
+  let etfMobile = null;
+
+  function etfOption(isMobile) {
+    return {
+      backgroundColor: 'transparent',
+      grid: isMobile
+        ? { left: 47, right: 14, top: 14, bottom: 50 }
+        : { left: 58, right: 22, top: 16, bottom: 58 },
+      tooltip: { trigger: 'axis', backgroundColor: '#0c1420', borderColor: GRID,
+        textStyle: { color: '#dce8f4', fontSize: 12 },
+        formatter: p => p[0].axisValue + '<br/>比率 ' + p[0].data.toFixed(2) + '%' },
+      xAxis: { type: 'category', data: dates, boundaryGap: false,
+        axisLine: { lineStyle: { color: GRID } },
+        axisLabel: { color: MUTED, fontSize: 10, rotate: 45, margin: 8,
+          interval: Math.max(0, Math.floor(dates.length / (isMobile ? 5 : 14))) },
+        axisTick: { show: false } },
+      yAxis: { type: 'value', scale: true, axisLine: { show: false }, axisTick: { show: false },
+        splitLine: { lineStyle: { color: GRID } },
+        axisLabel: { color: MUTED, fontSize: isMobile ? 10 : 11, formatter: v => v.toFixed(2) + '%' } },
+      series: [{
+        type: 'line', data: vals, showSymbol: false,
+        lineStyle: { color: '#2f6fb5', width: 2.2 },
+        itemStyle: { color: '#2f6fb5' },
+        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(62,198,224,.18)' }, { offset: 1, color: 'rgba(62,198,224,0)' }]) },
+        // 图上只留小圆点做定位，数值交给上方的极值行
+        markPoint: { symbolSize: 9,
+          data: [
+            { type: 'min', itemStyle: { color: '#2ebd6b' }, label: { show: false } },
+            { type: 'max', itemStyle: { color: '#f0453a' }, label: { show: false } }
+          ] }
+      }]
+    };
+  }
+
+  // 手机与桌面用不同边距和标签密度，跨断点时重建配置而非仅 resize
+  function layoutEtf() {
+    const isMobile = window.innerWidth <= 768;
+    if (etfMobile === isMobile) { etfChart.resize(); return; }
+    etfMobile = isMobile;
+    etfChart.setOption(etfOption(isMobile), true);
+  }
+  layoutEtf();
+  window.addEventListener('resize', layoutEtf);
   document.getElementById('etfNote').innerHTML = (ETF.note1 ? ETF.note1 + '<br>' : '') +
     (ETF.ratio_sub || '') + (ETF.note2 ? '<br>' + ETF.note2 : '');
-  window.addEventListener('resize', () => chart.resize());
 }
 renderEtf();
 </script>
