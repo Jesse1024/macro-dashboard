@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>债市分析框架 · 国债收益率曲线</title>
+<script src="echarts.min.js"></script>
+<style>
+:root {
+  --bg: #070b11;
+  --card: #0c1420;
+  --border: #1a2634;
+  --text: #dce8f4;
+  --muted: #7d90a4;
+  --faint: #4d6070;
+  --accent: #3ea6e0;
+  --up: #f0453a;
+  --down: #2ebd6b;
+  --mono: "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 28px 20px 60px;
+  background: var(--bg); color: var(--text);
+  font-family: var(--sans); line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+header { margin-bottom: 26px; }
+.kicker {
+  font: 11px/1.4 var(--mono); letter-spacing: 2.5px;
+  color: var(--faint); text-transform: uppercase; margin-bottom: 9px;
+}
+h1 {
+  margin: 0 0 8px; font-size: 30px; font-weight: 600;
+  letter-spacing: -.4px;
+}
+h1 .part { color: var(--accent); }
+.sub { color: var(--muted); font-size: 13px; font-family: var(--mono); }
+
+/* 全站导航（与 macro-dashboard 其他页面保持一致） */
+.navbar {
+  display: flex; align-items: center; gap: 9px;
+  flex-wrap: wrap; margin: 20px 0 24px;
+}
+.navbar a {
+  color: var(--muted); text-decoration: none;
+  font: 12px/1 var(--mono); letter-spacing: .5px;
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px;
+  transition: border-color .2s, color .2s;
+}
+.navbar a:hover { color: var(--accent); border-color: #2a3d52; }
+.navbar a.active { color: var(--accent); border-color: rgba(62,166,224,.45); }
+
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px 20px; margin-bottom: 16px;
+}
+
+.summary {
+  font-size: 14.5px; line-height: 2.0; color: #c8d8e8;
+  letter-spacing: .2px;
+}
+.summary b { color: var(--text); font-weight: 600; }
+.summary .k10 { color: #e8d24a; font-weight: 600; }
+.summary .up { color: var(--up); }
+.summary .down { color: var(--down); }
+.summary .flat { color: var(--muted); }
+.summary .shape {
+  display: block; margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--border); color: var(--muted); font-size: 13px;
+}
+
+.chart-bar {
+  display: flex; align-items: baseline; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 4px;
+}
+.chart-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.chart-legend { font: 11.5px/1.6 var(--mono); color: var(--muted); }
+.chart-legend span { display: inline-block; white-space: nowrap; }
+.chart-legend i {
+  display: inline-block; width: 14px; height: 2px;
+  vertical-align: middle; margin: 0 5px 0 10px;
+}
+#yieldCurve { width: 100%; height: 480px; }
+#tlChart, #cdChart { width: 100%; height: 300px; }
+
+/* 板块标题 */
+.region-title {
+  display: flex; align-items: center; gap: 11px;
+  margin: 36px 0 14px; padding-bottom: 2px;
+}
+.region-title .bar {
+  width: 3px; height: 19px; background: var(--accent); border-radius: 2px;
+  flex: 0 0 auto;
+}
+.region-title h2 { margin: 0; font-size: 17.5px; font-weight: 600; letter-spacing: -.2px; }
+.region-title .en {
+  color: var(--faint); font: 10px/1 var(--mono);
+  letter-spacing: 1.6px; margin-left: 2px;
+}
+
+/* 统计表 */
+.stat-table { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 8px; }
+.stat-table table { font-size: 12.5px; }
+.stat-table td { padding: 7px 10px; border-bottom: 1px solid #111a24; }
+.stat-table td:first-child { color: var(--muted); text-align: left; width: 46%; }
+.stat-table td:last-child { text-align: right; font-weight: 600; }
+
+table { width: 100%; border-collapse: collapse; font: 12.5px/1.6 var(--mono); }
+th {
+  color: var(--muted); font-weight: 500; font-size: 11.5px;
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+  text-align: right; background: #091019;
+}
+th:first-child { text-align: left; }
+td {
+  padding: 7px 10px; border-bottom: 1px solid #111a24;
+  text-align: right; color: var(--text);
+}
+td:first-child { text-align: left; color: var(--muted); }
+tr.key td { background: #0f1a27; }
+tr.key td:first-child { color: #e8d24a; font-weight: 600; }
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--muted); }
+
+.note {
+  color: var(--faint); font-size: 11.5px; line-height: 1.9;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.note b { color: var(--muted); font-weight: 500; }
+
+@media (max-width: 768px) {
+  body { padding: 18px 12px 40px; }
+  h1 { font-size: 23px; }
+  .card { padding: 14px 14px; border-radius: 8px; }
+  .summary { font-size: 13.5px; line-height: 1.95; }
+  #yieldCurve { height: 380px; }
+  table { font-size: 11px; }
+  th, td { padding: 6px 5px; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">BOND MARKET FRAMEWORK · CN TREASURY</div>
+    <h1>债市分析框架 <span class="part">/ 国债收益率曲线</span></h1>
+    <div class="sub" id="subline">—</div>
+  </header>
+
+  <div class="navbar">
+    <a href="index.html">数据看板</a>
+    <a href="fedwatch.html">加息预期</a>
+    <a href="insights.html">KOL 观点</a>
+    <a href="factors.html">因子指数</a>
+    <a href="huazheng_factors.html">华证因子</a>
+    <a href="stock_framework.html">股市框架</a>
+    <a href="bond_framework.html" class="active">债市框架</a>
+  </div>
+
+  <div class="card">
+    <div class="summary" id="summary">—</div>
+  </div>
+
+  <div class="card">
+    <div class="chart-bar">
+      <div class="chart-title">国债收益率曲线 · 期限结构</div>
+      <div class="chart-legend">
+        <span><i style="background:#3ea6e0"></i>最新</span>
+        <span><i style="background:#5a6b7d"></i>前一日</span>
+        <span><i style="background:#f0453a"></i>上行</span>
+        <span><i style="background:#2ebd6b"></i>下行</span>
+      </div>
+    </div>
+    <div id="yieldCurve"></div>
+  </div>
+
+  <div class="card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>期限</th><th>收益率</th><th>变动</th><th>前一交易日</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="note" id="note"></div>
+  </div>
+
+  <!-- ============ 二、TL 合约 20 日内上涨天数占比 ============ -->
+  <div class="region-title">
+    <div class="bar"></div><h2>TL 合约 · 20 日内上涨天数占比</h2>
+    <span class="en">30Y TREASURY FUTURES · UP-DAY RATIO</span>
+  </div>
+  <div class="card">
+    <div class="summary" id="tlSummary">—</div>
+  </div>
+  <div class="card">
+    <div class="chart-bar">
+      <div class="chart-title">TL 合约 20 日内上涨天数占比</div>
+      <div class="chart-legend">
+        <span><i style="background:#3ea6e0"></i>占比</span>
+        <span><i style="background:#e8d24a"></i>50% 阈值</span>
+      </div>
+    </div>
+    <div id="tlChart"></div>
+    <div class="stat-table">
+      <table>
+        <tbody id="tlStat"></tbody>
+      </table>
+    </div>
+    <div class="note" id="tlNote"></div>
+  </div>
+
+  <!-- ============ 三、一年期同业存单收益率 ============ -->
+  <div class="region-title">
+    <div class="bar"></div><h2>一年期同业存单（AAA）收益率</h2>
+    <span class="en">1Y NCD YIELD · AAA</span>
+  </div>
+  <div class="card">
+    <div class="summary" id="cdSummary">—</div>
+  </div>
+  <div class="card">
+    <div class="chart-bar">
+      <div class="chart-title">一年期同业存单到期收益率(AAA)</div>
+      <div class="chart-legend">
+        <span><i style="background:#3ea6e0"></i>1Y 收益率</span>
+      </div>
+    </div>
+    <div id="cdChart"></div>
+    <div class="stat-table">
+      <table>
+        <tbody id="cdStat"></tbody>
+      </table>
+    </div>
+    <div class="note" id="cdNote"></div>
+  </div>
+
+</div>
+
+<script>
+const DATA = {"latest": "2026-11-09", "prev": "2026-11-06", "fetchedAt": "2026-11-10 11:18:32", "rows": [{"t": 30.0, "y": 2.028, "chg": 0.05}, {"t": 10.0, "y": 1.5874, "chg": 0.06}, {"t": 7.0, "y": 1.4094, "chg": 0.98}, {"t": 5.0, "y": 1.3053, "chg": -0.62}, {"t": 3.0, "y": 1.2297, "chg": 0.06}, {"t": 2.0, "y": 1.2157, "chg": 0.02}, {"t": 1.0, "y": 1.1667, "chg": -0.16}], "all": [1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0], "latestCurve": {"1": 1.1667, "2": 1.2157, "3": 1.2297, "5": 1.3053, "7": 1.4094, "10": 1.5874, "15": 1.8612, "20": 2.0139, "30": 2.028, "40": 2.0736, "50": 2.1444}, "prevCurve": {"1": 1.1683, "2": 1.2155, "3": 1.2291, "5": 1.3115, "7": 1.3996, "10": 1.5868, "15": 1.8609, "20": 2.0139, "30": 2.0275, "40": 2.0773, "50": 2.1524}, "chgMap": {"1": -0.16, "2": 0.02, "3": 0.06, "5": -0.62, "7": 0.98, "10": 0.06, "15": 0.03, "20": 0.0, "30": 0.05, "40": -0.37, "50": -0.8}, "shape": {"text": "形态判断：<b>蝶形变化</b>（两端基本不动，中期单独调整）。30 年与 1 年利差 86.13bp，10 年与 1 年利差 42.07bp。今日变动最明显的是 7 年期（上行0.98bp），中段是本次调整的主战场。"}, "anchors": {"omo": 1.25, "effr": 3.64}, "tl": {"latestDate": "2026-11-10", "latestRatio": 55.0, "latestUp": 11, "prevRatio": 60.0, "latestClose": 118.49, "series": [{"date": "2026-04-29", "ratio": 65.0, "up": 13}, {"date": "2026-04-30", "ratio": 65.0, "up": 13}, {"date": "2026-05-06", "ratio": 65.0, "up": 13}, {"date": "2026-05-07", "ratio": 65.0, "up": 13}, {"date": "2026-05-08", "ratio": 60.0, "up": 12}, {"date": "2026-05-11", "ratio": 60.0, "up": 12}, {"date": "2026-05-12", "ratio": 60.0, "up": 12}, {"date": "2026-05-13", "ratio": 60.0, "up": 12}, {"date": "2026-05-14", "ratio": 55.0, "up": 11}, {"date": "2026-05-15", "ratio": 50.0, "up": 10}, {"date": "2026-05-18", "ratio": 50.0, "up": 10}, {"date": "2026-05-19", "ratio": 55.0, "up": 11}, {"date": "2026-05-20", "ratio": 50.0, "up": 10}, {"date": "2026-05-21", "ratio": 50.0, "up": 10}, {"date": "2026-05-22", "ratio": 50.0, "up": 10}, {"date": "2026-05-25", "ratio": 45.0, "up": 9}, {"date": "2026-05-26", "ratio": 50.0, "up": 10}, {"date": "2026-05-27", "ratio": 55.0, "up": 11}, {"date": "2026-05-28", "ratio": 60.0, "up": 12}, {"date": "2026-05-29", "ratio": 60.0, "up": 12}, {"date": "2026-06-01", "ratio": 60.0, "up": 12}, {"date": "2026-06-02", "ratio": 65.0, "up": 13}, {"date": "2026-06-03", "ratio": 65.0, "up": 13}, {"date": "2026-06-04", "ratio": 65.0, "up": 13}, {"date": "2026-06-05", "ratio": 65.0, "up": 13}, {"date": "2026-06-08", "ratio": 60.0, "up": 12}, {"date": "2026-06-09", "ratio": 55.0, "up": 11}, {"date": "2026-06-10", "ratio": 50.0, "up": 10}, {"date": "2026-06-11", "ratio": 50.0, "up": 10}, {"date": "2026-06-12", "ratio": 55.0, "up": 11}, {"date": "2026-06-15", "ratio": 55.0, "up": 11}, {"date": "2026-06-16", "ratio": 55.0, "up": 11}, {"date": "2026-06-17", "ratio": 60.0, "up": 12}, {"date": "2026-06-18", "ratio": 60.0, "up": 12}, {"date": "2026-06-22", "ratio": 60.0, "up": 12}, {"date": "2026-06-23", "ratio": 60.0, "up": 12}, {"date": "2026-06-24", "ratio": 55.0, "up": 11}, {"date": "2026-06-25", "ratio": 55.0, "up": 11}, {"date": "2026-06-26", "ratio": 55.0, "up": 11}, {"date": "2026-06-29", "ratio": 55.0, "up": 11}, {"date": "2026-06-30", "ratio": 50.0, "up": 10}, {"date": "2026-07-01", "ratio": 45.0, "up": 9}, {"date": "2026-07-02", "ratio": 50.0, "up": 10}, {"date": "2026-07-03", "ratio": 45.0, "up": 9}, {"date": "2026-07-06", "ratio": 50.0, "up": 10}, {"date": "2026-07-07", "ratio": 55.0, "up": 11}, {"date": "2026-07-08", "ratio": 60.0, "up": 12}, {"date": "2026-07-09", "ratio": 60.0, "up": 12}, {"date": "2026-07-10", "ratio": 65.0, "up": 13}, {"date": "2026-07-13", "ratio": 60.0, "up": 12}, {"date": "2026-07-14", "ratio": 60.0, "up": 12}, {"date": "2026-07-15", "ratio": 60.0, "up": 12}, {"date": "2026-07-16", "ratio": 55.0, "up": 11}, {"date": "2026-07-17", "ratio": 60.0, "up": 12}, {"date": "2026-07-20", "ratio": 55.0, "up": 11}, {"date": "2026-07-21", "ratio": 60.0, "up": 12}, {"date": "2026-07-22", "ratio": 65.0, "up": 13}, {"date": "2026-07-23", "ratio": 65.0, "up": 13}, {"date": "2026-07-24", "ratio": 65.0, "up": 13}, {"date": "2026-07-27", "ratio": 60.0, "up": 12}, {"date": "2026-07-28", "ratio": 65.0, "up": 13}, {"date": "2026-07-29", "ratio": 65.0, "up": 13}, {"date": "2026-07-30", "ratio": 65.0, "up": 13}, {"date": "2026-07-31", "ratio": 70.0, "up": 14}, {"date": "2026-08-03", "ratio": 70.0, "up": 14}, {"date": "2026-08-04", "ratio": 70.0, "up": 14}, {"date": "2026-08-05", "ratio": 65.0, "up": 13}, {"date": "2026-08-06", "ratio": 65.0, "up": 13}, {"date": "2026-08-07", "ratio": 65.0, "up": 13}, {"date": "2026-08-10", "ratio": 70.0, "up": 14}, {"date": "2026-08-11", "ratio": 65.0, "up": 13}, {"date": "2026-08-12", "ratio": 60.0, "up": 12}, {"date": "2026-08-13", "ratio": 65.0, "up": 13}, {"date": "2026-08-14", "ratio": 65.0, "up": 13}, {"date": "2026-08-17", "ratio": 65.0, "up": 13}, {"date": "2026-08-18", "ratio": 65.0, "up": 13}, {"date": "2026-08-19", "ratio": 60.0, "up": 12}, {"date": "2026-08-20", "ratio": 55.0, "up": 11}, {"date": "2026-08-21", "ratio": 50.0, "up": 10}, {"date": "2026-08-24", "ratio": 55.0, "up": 11}, {"date": "2026-08-25", "ratio": 55.0, "up": 11}, {"date": "2026-08-26", "ratio": 55.0, "up": 11}, {"date": "2026-08-27", "ratio": 50.0, "up": 10}, {"date": "2026-08-28", "ratio": 45.0, "up": 9}, {"date": "2026-08-31", "ratio": 45.0, "up": 9}, {"date": "2026-09-01", "ratio": 45.0, "up": 9}, {"date": "2026-09-02", "ratio": 45.0, "up": 9}, {"date": "2026-09-03", "ratio": 50.0, "up": 10}, {"date": "2026-09-04", "ratio": 45.0, "up": 9}, {"date": "2026-09-07", "ratio": 45.0, "up": 9}, {"date": "2026-09-08", "ratio": 45.0, "up": 9}, {"date": "2026-09-09", "ratio": 45.0, "up": 9}, {"date": "2026-09-10", "ratio": 40.0, "up": 8}, {"date": "2026-09-11", "ratio": 35.0, "up": 7}, {"date": "2026-09-14", "ratio": 35.0, "up": 7}, {"date": "2026-09-15", "ratio": 35.0, "up": 7}, {"date": "2026-09-16", "ratio": 40.0, "up": 8}, {"date": "2026-09-17", "ratio": 40.0, "up": 8}, {"date": "2026-09-18", "ratio": 45.0, "up": 9}, {"date": "2026-09-21", "ratio": 45.0, "up": 9}, {"date": "2026-09-22", "ratio": 45.0, "up": 9}, {"date": "2026-09-23", "ratio": 45.0, "up": 9}, {"date": "2026-09-24", "ratio": 50.0, "up": 10}, {"date": "2026-09-28", "ratio": 50.0, "up": 10}, {"date": "2026-09-29", "ratio": 50.0, "up": 10}, {"date": "2026-09-30", "ratio": 45.0, "up": 9}, {"date": "2026-10-08", "ratio": 50.0, "up": 10}, {"date": "2026-10-09", "ratio": 50.0, "up": 10}, {"date": "2026-10-12", "ratio": 55.0, "up": 11}, {"date": "2026-10-13", "ratio": 55.0, "up": 11}, {"date": "2026-10-14", "ratio": 60.0, "up": 12}, {"date": "2026-10-15", "ratio": 60.0, "up": 12}, {"date": "2026-10-16", "ratio": 65.0, "up": 13}, {"date": "2026-10-19", "ratio": 65.0, "up": 13}, {"date": "2026-10-20", "ratio": 70.0, "up": 14}, {"date": "2026-10-21", "ratio": 65.0, "up": 13}, {"date": "2026-10-22", "ratio": 60.0, "up": 12}, {"date": "2026-10-23", "ratio": 60.0, "up": 12}, {"date": "2026-10-26", "ratio": 60.0, "up": 12}, {"date": "2026-10-27", "ratio": 60.0, "up": 12}, {"date": "2026-10-28", "ratio": 60.0, "up": 12}, {"date": "2026-10-29", "ratio": 65.0, "up": 13}, {"date": "2026-10-30", "ratio": 60.0, "up": 12}, {"date": "2026-11-02", "ratio": 65.0, "up": 13}, {"date": "2026-11-03", "ratio": 65.0, "up": 13}, {"date": "2026-11-04", "ratio": 65.0, "up": 13}, {"date": "2026-11-05", "ratio": 65.0, "up": 13}, {"date": "2026-11-06", "ratio": 65.0, "up": 13}, {"date": "2026-11-09", "ratio": 60.0, "up": 12}, {"date": "2026-11-10", "ratio": 55.0, "up": 11}], "fetchedAt": "2026-11-10 11:29:24"}, "cd": {"latest": "2026-11-09", "prev": "2026-11-06", "latestValue": 1.395, "prevValue": 1.39, "dates": ["2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-09"], "values": {"2026-07-03": 1.4625, "2026-07-06": 1.46, "2026-07-07": 1.4625, "2026-07-08": 1.465, "2026-07-09": 1.4625, "2026-07-10": 1.4625, "2026-07-13": 1.4675, "2026-07-14": 1.4675, "2026-07-15": 1.465, "2026-07-16": 1.465, "2026-07-17": 1.4675, "2026-07-20": 1.47, "2026-07-21": 1.4725, "2026-07-22": 1.4725, "2026-07-23": 1.475, "2026-07-24": 1.475, "2026-07-27": 1.4775, "2026-07-28": 1.48, "2026-07-29": 1.48, "2026-07-30": 1.48, "2026-07-31": 1.4775, "2026-08-03": 1.48, "2026-08-04": 1.48, "2026-08-05": 1.475, "2026-08-06": 1.4775, "2026-08-07": 1.478, "2026-08-10": 1.48, "2026-08-11": 1.48, "2026-08-12": 1.48, "2026-08-13": 1.48, "2026-08-14": 1.48, "2026-08-17": 1.4775, "2026-08-18": 1.4755, "2026-08-19": 1.4725, "2026-08-20": 1.4725, "2026-08-21": 1.475, "2026-08-24": 1.48, "2026-08-25": 1.48, "2026-08-26": 1.4825, "2026-08-27": 1.4875, "2026-08-28": 1.485, "2026-08-31": 1.485, "2026-09-01": 1.4825, "2026-09-02": 1.4825, "2026-09-03": 1.481, "2026-09-04": 1.48, "2026-09-07": 1.48, "2026-09-08": 1.4825, "2026-09-09": 1.484, "2026-09-10": 1.485, "2026-09-11": 1.485, "2026-09-14": 1.485, "2026-09-15": 1.485, "2026-09-16": 1.4875, "2026-09-17": 1.4875, "2026-09-18": 1.4875, "2026-09-20": 1.4875, "2026-09-21": 1.4875, "2026-09-22": 1.4865, "2026-09-23": 1.485, "2026-09-24": 1.4825, "2026-09-28": 1.4725, "2026-09-29": 1.465, "2026-09-30": 1.4688, "2026-10-08": 1.467, "2026-10-09": 1.46, "2026-10-10": 1.4551, "2026-10-12": 1.45, "2026-10-13": 1.44, "2026-10-14": 1.44, "2026-10-15": 1.4375, "2026-10-16": 1.44, "2026-10-19": 1.44, "2026-10-20": 1.4025, "2026-10-21": 1.405, "2026-10-22": 1.41, "2026-10-23": 1.411, "2026-10-26": 1.415, "2026-10-27": 1.41, "2026-10-28": 1.4075, "2026-10-29": 1.4125, "2026-10-30": 1.43, "2026-11-02": 1.42, "2026-11-03": 1.4025, "2026-11-04": 1.385, "2026-11-05": 1.3875, "2026-11-06": 1.39, "2026-11-09": 1.395}, "fetchedAt": "2026-11-10 11:45:14"}};
+
+const GRID = '#1a2634', MUTED = '#7d90a4';
+
+function fmtBp(v) {
+  if (v === null || v === undefined) return '—';
+  const a = Math.abs(v);
+  if (a < 0.005) return '持平';
+  const s = a < 1 ? a.toFixed(2) : a.toFixed(1);
+  return (v > 0 ? '+' : '−') + s + 'bp';
+}
+function cls(v) {
+  if (v === null || v === undefined || Math.abs(v) < 0.005) return 'flat';
+  return v > 0 ? 'up' : 'down';
+}
+function termLabel(t) {
+  return (t === Math.floor(t) ? Math.floor(t) : t) + 'Y';
+}
+// 文字总结里用「30年」，图表轴和表格用「30Y」
+function termYears(t) {
+  return (t === Math.floor(t) ? Math.floor(t) : t) + '年';
+}
+
+// ---- 文字总结（研报体例）----
+function buildSummary() {
+  const parts = DATA.rows.map(r => {
+    const flat = Math.abs(r.chg) < 0.005;
+    const dir = flat ? '持平在' : (r.chg > 0 ? '上行' : '下行');
+    const val = '<b>' + r.y.toFixed(4) + '%</b>';
+    const name = termYears(r.t) + '国债';
+    if (flat) return name + '与前一交易日' + dir + val;
+    const move = Math.abs(r.chg).toFixed(Math.abs(r.chg) < 1 ? 2 : 1) + 'bp至';
+    return name + dir + move + val;
+  });
+  return '中债估值曲线方面，' + parts.join('，') + '。' +
+         '<span class="shape">' + DATA.shape.text + '</span>';
+}
+
+// 曲线形态判断在 Python 端 build_shape_text() 里算好，随 DATA.shape.text 一起注入，
+// 这里不再重复实现，避免两端逻辑分叉。
+
+// ---- 表格 ----
+function buildTable() {
+  const tb = document.getElementById('tbody');
+  const all = DATA.all.map(t => ({t}));
+  tb.innerHTML = all.map(({t}) => {
+    const cur = DATA.latestCurve[String(t)], prv = DATA.prevCurve[String(t)];
+    const chg = DATA.chgMap[String(t)];
+    const key = (t === 10.0 || t === 30.0) ? ' class="key"' : '';
+    return '<tr' + key + '><td>' + termLabel(t) + '</td><td>' +
+      (cur !== undefined ? cur.toFixed(4) + '%' : '—') + '</td><td class="' +
+      cls(chg) + '">' + fmtBp(chg) + '</td><td>' +
+      (prv !== undefined ? prv.toFixed(4) + '%' : '—') + '</td></tr>';
+  }).join('');
+}
+
+// ---- 图表：上方收益率曲线，下方同 X 轴的变动柱 ----
+// 两天的曲线差异通常不到 1bp，在 1%~2.2% 的 Y 轴量程上会完全重合，
+// 单看曲线看不出任何变化。加一根变动柱才能看清各期限到底调了多少。
+function buildChart() {
+  const el = document.getElementById('yieldCurve');
+  const chart = echarts.init(el);
+  const cats = DATA.all.map(termLabel);
+  const cur = DATA.all.map(t => DATA.latestCurve[String(t)]);
+  const prv = DATA.all.map(t => DATA.prevCurve[String(t)]);
+  const chg = DATA.all.map(t => DATA.chgMap[String(t)] ?? 0);
+
+  function option(mobile) {
+    const L = mobile ? 44 : 58, R = mobile ? 12 : 26;
+    return {
+      backgroundColor: 'transparent',
+      axisPointer: { link: [{ xAxisIndex: 'all' }] },
+      grid: [
+        { left: L, right: R, top: 20, height: mobile ? '46%' : '50%' },
+        { left: L, right: R, top: mobile ? '66%' : '68%', height: '18%' }
+      ],
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#0c1420', borderColor: GRID,
+        textStyle: { color: '#dce8f4', fontSize: 12 },
+        formatter: p => {
+          const i = p[0].dataIndex, t = DATA.all[i];
+          const c = DATA.latestCurve[String(t)], q = DATA.prevCurve[String(t)];
+          return termLabel(t) + '<br/>' +
+            DATA.latest + '　' + c.toFixed(4) + '%' +
+            '<br/>' + DATA.prev + '　' + q.toFixed(4) + '%' +
+            '<br/>变动　' + fmtBp(DATA.chgMap[String(t)]);
+        }
+      },
+      xAxis: [
+        { type: 'category', data: cats, boundaryGap: false, gridIndex: 0,
+          axisLine: { lineStyle: { color: GRID } },
+          axisLabel: { show: false }, axisTick: { show: false } },
+        { type: 'category', data: cats, gridIndex: 1,
+          axisLine: { lineStyle: { color: GRID } },
+          axisLabel: { color: MUTED, fontSize: mobile ? 9 : 11 },
+          axisTick: { show: false } }
+      ],
+      yAxis: [
+        { type: 'value', scale: true, gridIndex: 0,
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { lineStyle: { color: GRID } },
+          axisLabel: { color: MUTED, fontSize: mobile ? 10 : 11,
+                       formatter: v => v.toFixed(2) + '%' } },
+        { type: 'value', gridIndex: 1,
+          name: 'bp', nameTextStyle: { color: MUTED, fontSize: 10 },
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { color: MUTED, fontSize: 9,
+                       formatter: v => (Math.abs(v) < 0.05 ? '0' : v.toFixed(1)) } }
+      ],
+      series: [
+        { name: '前一交易日', type: 'line', data: prv, showSymbol: false,
+          xAxisIndex: 0, yAxisIndex: 0, z: 1,
+          lineStyle: { color: '#5a6b7d', width: 1.4, type: 'dashed' },
+          itemStyle: { color: '#5a6b7d' } },
+        { name: '最新交易日', type: 'line', data: cur,
+          symbol: 'circle', symbolSize: 6,
+          xAxisIndex: 0, yAxisIndex: 0, z: 2,
+          lineStyle: { color: '#3ea6e0', width: 2.4 },
+          itemStyle: { color: '#3ea6e0' },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(62,166,224,.16)' },
+            { offset: 1, color: 'rgba(62,166,224,0)' }]) } },
+        { name: '变动(bp)', type: 'bar',
+          data: chg.map(v => ({
+            value: v,
+            itemStyle: {
+              color: v > 0.004 ? '#f0453a' : (v < -0.004 ? '#2ebd6b' : '#4d6070'),
+              borderRadius: 2
+            }
+          })),
+          xAxisIndex: 1, yAxisIndex: 1, barWidth: '52%',
+          label: { show: !mobile, position: 'top', color: '#8da2b8', fontSize: 9,
+                   formatter: p => Math.abs(p.value) < 0.05 ? '' : p.value.toFixed(1) } }
+      ]
+    };
+  }
+
+  const isMobile = window.innerWidth <= 768;
+  chart.setOption(option(isMobile));
+  let lastMobile = isMobile;
+  window.addEventListener('resize', () => {
+    const m = window.innerWidth <= 768;
+    chart.resize();
+    if (m !== lastMobile) { lastMobile = m; chart.setOption(option(m), true); }
+  });
+}
+
+// ---- TL 合约 20 日内上涨天数占比 ----
+function buildTL() {
+  const D = DATA.tl;
+  const sumEl = document.getElementById('tlSummary');
+  if (!D) { sumEl.textContent = '数据缺失'; return; }
+
+  const r = D.latestRatio, above = r >= 50;
+  sumEl.innerHTML =
+    '上涨天数占比方面，TL 合约的 20 日内上涨占比为 <b>' + r.toFixed(0) + '%</b>' +
+    '（20 个交易日中 ' + D.latestUp + ' 天上涨），' +
+    (above ? '大于等于' : '低于') + ' 50% 阈值，' +
+    (above ? '处于<b>持有时间优先</b>的配置区间。'
+           : '不在持有时间优先的配置区间，趋势偏弱。');
+
+  const rows = [
+    ['最新交易日', D.latestDate],
+    ['20 日内上涨天数', D.latestUp + ' / 20 天'],
+    ['上涨天数占比', r.toFixed(0) + '%'],
+    ['前一交易日占比', D.prevRatio.toFixed(0) + '%'],
+    ['相对 50% 阈值', (r - 50 >= 0 ? '+' : '') + (r - 50).toFixed(0) + ' pct'],
+    ['TL 主力收盘', D.latestClose.toFixed(3)],
+  ];
+  document.getElementById('tlStat').innerHTML = rows
+    .map(([k, v]) => '<tr><td>' + k + '</td><td>' + v + '</td></tr>').join('');
+
+  const isM = window.innerWidth <= 768;
+  const dates = D.series.map(x => x.date);
+  const vals = D.series.map(x => x.ratio);
+  const chart = echarts.init(document.getElementById('tlChart'));
+  chart.setOption({
+    backgroundColor: 'transparent',
+    grid: { left: isM ? 38 : 50, right: isM ? 12 : 24, top: 16, bottom: isM ? 40 : 48 },
+    tooltip: {
+      trigger: 'axis', backgroundColor: '#0c1420', borderColor: GRID,
+      textStyle: { color: '#dce8f4', fontSize: 12 },
+      formatter: p => p[0].axisValue + '<br/>上涨占比 ' + p[0].data.toFixed(0) + '%'
+    },
+    xAxis: {
+      type: 'category', data: dates, boundaryGap: false,
+      axisLine: { lineStyle: { color: GRID } },
+      axisLabel: { color: MUTED, fontSize: isM ? 9 : 10,
+        // 手机端只显示 MM-DD 且不旋转，避免旋转后标签超出左边界被裁
+        rotate: 0,
+        interval: Math.max(0, Math.floor(dates.length / (isM ? 4 : 9))),
+        formatter: v => isM ? String(v).slice(5) : v },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value', min: 25, max: 85, interval: 10,
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { lineStyle: { color: GRID } },
+      axisLabel: { color: MUTED, fontSize: isM ? 9 : 10, formatter: v => v + '%' }
+    },
+    series: [{
+      type: 'line', step: 'end', data: vals, showSymbol: false,
+      lineStyle: { color: '#3ea6e0', width: 2 },
+      itemStyle: { color: '#3ea6e0' },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(62,166,224,.16)' },
+        { offset: 1, color: 'rgba(62,166,224,0)' }]) },
+      markLine: {
+        silent: true, symbol: 'none',
+        data: [{ yAxis: 50,
+          lineStyle: { color: '#e8d24a', type: 'dashed', width: 1.2 },
+          label: { formatter: '50%', color: '#e8d24a', fontSize: 10,
+                   position: 'insideEndTop' } }]
+      }
+    }]
+  });
+  window.addEventListener('resize', () => chart.resize());
+}
+
+// ---- 一年期同业存单收益率 ----
+function buildCD() {
+  const D = DATA.cd;
+  const sumEl = document.getElementById('cdSummary');
+  if (!D) { sumEl.textContent = '数据缺失'; return; }
+
+  const OMO = DATA.anchors.omo, EFFR = DATA.anchors.effr;
+  const v = D.latestValue, p = D.prevValue;
+  const chg = (v - p) * 100;
+  const vsOmo = (v - OMO) * 100;
+  const vsEffr = (v - EFFR) * 100;
+  const dir = Math.abs(chg) < 0.005 ? '持平' : (chg > 0 ? '上行' : '下行');
+
+  sumEl.innerHTML =
+    '二级存单方面，一年国股存单' +
+    (Math.abs(chg) < 0.005 ? '持平在 ' : dir + Math.abs(chg).toFixed(2) + 'bp 至 ') +
+    '<b>' + v.toFixed(4) + '%</b>。比隔夜 OMO 利率的 ' + OMO.toFixed(2) + '% 高 ' +
+    vsOmo.toFixed(1) + 'bp，比有效联邦基金利率的 ' + EFFR.toFixed(2) + '% 低 ' +
+    Math.abs(vsEffr).toFixed(1) + 'bp。';
+
+  const rows = [
+    ['最新交易日', D.latest],
+    ['1Y 存单收益率', v.toFixed(4) + '%'],
+    ['较前一交易日', (Math.abs(chg) < 0.005 ? '持平'
+      : (chg > 0 ? '+' : '−') + Math.abs(chg).toFixed(2) + 'bp')],
+    ['对隔夜 OMO (' + OMO.toFixed(2) + '%)', (vsOmo >= 0 ? '+' : '−') + Math.abs(vsOmo).toFixed(1) + 'bp'],
+    ['对 EFFR (' + EFFR.toFixed(2) + '%)', (vsEffr >= 0 ? '+' : '−') + Math.abs(vsEffr).toFixed(1) + 'bp'],
+  ];
+  document.getElementById('cdStat').innerHTML = rows
+    .map(([k, val]) => '<tr><td>' + k + '</td><td>' + val + '</td></tr>').join('');
+
+  const isM = window.innerWidth <= 768;
+  const dates = D.dates, vals = D.dates.map(d => D.values[d]);
+  const chart = echarts.init(document.getElementById('cdChart'));
+  chart.setOption({
+    backgroundColor: 'transparent',
+    grid: { left: isM ? 44 : 54, right: isM ? 12 : 24, top: 16, bottom: isM ? 40 : 48 },
+    tooltip: {
+      trigger: 'axis', backgroundColor: '#0c1420', borderColor: GRID,
+      textStyle: { color: '#dce8f4', fontSize: 12 },
+      formatter: p => p[0].axisValue + '<br/>1Y 存单 ' + p[0].data.toFixed(4) + '%'
+    },
+    xAxis: {
+      type: 'category', data: dates, boundaryGap: false,
+      axisLine: { lineStyle: { color: GRID } },
+      axisLabel: { color: MUTED, fontSize: isM ? 9 : 10,
+        rotate: 0,
+        interval: Math.max(0, Math.floor(dates.length / (isM ? 4 : 9))),
+        formatter: x => isM ? String(x).slice(5) : x },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value', scale: true,
+      axisLine: { show: false }, axisTick: { show: false },
+      splitLine: { lineStyle: { color: GRID } },
+      axisLabel: { color: MUTED, fontSize: isM ? 9 : 10,
+                   formatter: x => x.toFixed(2) + '%' }
+    },
+    series: [{
+      type: 'line', data: vals, showSymbol: false,
+      lineStyle: { color: '#3ea6e0', width: 2 },
+      itemStyle: { color: '#3ea6e0' },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(62,166,224,.14)' },
+        { offset: 1, color: 'rgba(62,166,224,0)' }]) },
+      markPoint: {
+        symbolSize: 7,
+        data: [
+          { type: 'max', itemStyle: { color: '#f0453a' }, label: { show: false } },
+          { type: 'min', itemStyle: { color: '#2ebd6b' }, label: { show: false } }
+        ]
+      }
+    }]
+  });
+  window.addEventListener('resize', () => chart.resize());
+}
+
+document.getElementById('subline').textContent =
+  '数据日期 ' + DATA.latest + '　｜　前一交易日 ' + DATA.prev +
+  '　｜　中债国债收益率曲线（到期收益率·估值曲线）';
+document.getElementById('summary').innerHTML = buildSummary();
+document.getElementById('note').innerHTML =
+  '<b>口径</b>：本页取中债登「中债国债收益率曲线」，是各期限的估值收益率；' +
+  '研报里「10 年国债 260016」那种写法是活跃券成交收益率，通常比估值低 1-2bp，两者不可混用。<br>' +
+  '<b>数据源</b>：中国债券信息网（中央国债登记结算有限责任公司）yield.chinabond.com.cn　｜　' +
+  '抓取时间 ' + DATA.fetchedAt;
+buildTable();
+buildChart();
+buildTL();
+buildCD();
+</script>
+</body>
+</html>
